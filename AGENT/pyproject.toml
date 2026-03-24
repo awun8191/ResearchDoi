@@ -1,0 +1,15 @@
+[project]
+name = "api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastapi[all]>=0.129.2",
+    "google>=3.0.0",
+    "google-adk[extensions]>=1.25.1",
+    "google-cloud-aiplatform>=1.138.0",
+    "numpy>=2.4.2",
+    "vertexai>=1.43.0",
+]

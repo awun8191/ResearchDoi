@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+GOOGLE_CLOUD_PROJECT="researchassistant-3446d"
+GOOGLE_CLOUD_LOCATION="us-central1"
+GOOGLE_CLOUD_STARTING_BUCKET="gs://rast-agent"
+SERVICE_NAME=rast-agent
+AGENT_PATH="./src"
+RUNTIME_ENV_VARS="GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT},GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION},GOOGLE_CLOUD_STARTING_BUCKET=${GOOGLE_CLOUD_STARTING_BUCKET}"
+
+adk deploy cloud_run \
+    --project=$GOOGLE_CLOUD_PROJECT \
+    --region=$GOOGLE_CLOUD_LOCATION \
+    --service_name=$SERVICE_NAME \
+    $AGENT_PATH \
+    -- \
+    --update-env-vars="${RUNTIME_ENV_VARS}"
+    
