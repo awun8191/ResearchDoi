@@ -651,15 +651,6 @@ export default function ArticleCard({ article }) {
           color: var(--text-dim);
           font-style: italic;
         }
-          cursor: pointer;
-          font-size: 0.85rem;
-          transition: background 0.2s ease;
-        }
-
-        .project-option:hover {
-          background: var(--secondary-glow);
-          color: var(--secondary);
-        }
 
         @media (max-width: 640px) {
           .article-main-card {
