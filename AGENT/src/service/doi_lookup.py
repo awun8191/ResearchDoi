@@ -3,10 +3,12 @@ import os
 import logging
 from typing import Optional, Dict, Any
 
+from src import require_api_key
+
 logger = logging.getLogger(__name__)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080")
-API_KEY = os.getenv("API_KEY", "nas")
+API_KEY = require_api_key()
 
 class AgentDoiService:
     """Wrapper for the ResearchDoi API DOI resolver."""

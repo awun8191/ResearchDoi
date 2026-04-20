@@ -6,6 +6,9 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
+# Load the local .env file before any module reads the environment.
+load_dotenv()
+
 # Arxiv integration
 import arxiv
 
@@ -14,16 +17,15 @@ from google.adk.events import Event
 from google.genai import types
 
 # Internal imports
+from src import require_api_key
 from src.service.doi_lookup import doi_service
 from src.service.pdf_resolver import pdf_service
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # Environment Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080")
-API_KEY = os.getenv("API_KEY", "nas")
+API_KEY = require_api_key()
 EXA_API_KEY = os.getenv("EXA_API_KEY", "")
 
 # ── 1. Exa Direct API Integration (Replacing MCP due to Task conflict) ───────
