@@ -1,0 +1,181 @@
+2026-04-20 11:37:55,373 - INFO - service_factory.py:266 - Using in-memory memory service
+2026-04-20 11:37:55,374 - INFO - local_storage.py:84 - Using per-agent session storage rooted at /home/nasbombz/Documents/Projects/ResearchDoi/AGENT
+2026-04-20 11:37:55,375 - INFO - local_storage.py:110 - Using file artifact service at /home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.adk/artifacts
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/google/adk/cli/fast_api.py:192: UserWarning: [EXPERIMENTAL] InMemoryCredentialService: This feature is experimental and may change or be removed in future versions without notice. It may introduce breaking changes at any time.
+  credential_service = InMemoryCredentialService()
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/google/adk/auth/credential_service/in_memory_credential_service.py:33: UserWarning: [EXPERIMENTAL] BaseCredentialService: This feature is experimental and may change or be removed in future versions without notice. It may introduce breaking changes at any time.
+  super().__init__()
+INFO:     Started server process [43884]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-04-20 11:37:56,684 - INFO - local_storage.py:60 - Creating local session service at /home/nasbombz/Documents/Projects/ResearchDoi/AGENT/src/.adk/session.db
+2026-04-20 11:37:56,694 - INFO - adk_web_server.py:665 - New session created: session_1776685076
+INFO:     127.0.0.1:48032 - "POST /apps/src/users/user_123/sessions/session_1776685076 HTTP/1.1" 200 OK
+2026-04-20 11:37:56,705 - INFO - envs.py:83 - Loaded .env file for src at /home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.env
+2026-04-20 11:37:56,707 - INFO - envs.py:83 - Loaded .env file for src at /home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.env
+2026-04-20 11:37:56,844 - INFO - agent_loader.py:130 - Found root_agent in src.agent
+[92m11:38:03 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:38:03,220 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:38:21,615 - INFO - adk_web_server.py:665 - New session created: session_1776685101
+INFO:     127.0.0.1:47172 - "POST /apps/src/users/user_123/sessions/session_1776685101 HTTP/1.1" 200 OK
+[92m11:38:21 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:38:21,651 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...it into an outline.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:38:49 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:38:49,484 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="I'll sea...pers and documents.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+2026-04-20 11:38:53,550 - INFO - __init__.py:727 - Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=quantum+computing&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+2026-04-20 11:38:56,813 - INFO - __init__.py:653 - Got first page: 100 of 849447 total results
+[92m11:38:56 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:38:56,835 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...comprehensive view.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:39:25 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:39:25,227 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol..., and applications.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:39:31 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:39:31,650 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="I'd be h...tline for the user.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:39:43 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:39:43,691 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="I'll res...gather information.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+2026-04-20 11:39:47,270 - INFO - __init__.py:727 - Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=quantum+computing&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+2026-04-20 11:39:50,375 - INFO - __init__.py:653 - Got first page: 100 of 849447 total results
+[92m11:39:50 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:39:50,404 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol... quantum computing.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:39:58 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:39:58,381 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...er range of papers.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:40:16 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:40:16,134 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+[92m11:40:22 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:40:22,360 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="Based on...the papers I found.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='st...finish_reason': 'stop'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:40:55 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:40:55,031 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="Looking ...puting's landscape.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:15 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:15,145 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...hine learning next.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:26 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:26,332 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content='Based on...tline for the user.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='st...finish_reason': 'stop'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:26 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:26,818 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...ich is another gap.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:33 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:33,797 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="I'll rev...ese critical areas.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:48 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:48,492 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...ramming frameworks.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:41:53 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:41:53,517 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="Based on... exit the loop now.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:42:00 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:42:00,516 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content=None, rol...d out the research.\n'}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:42:26 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:42:26,516 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+/home/nasbombz/Documents/Projects/ResearchDoi/AGENT/.venv/lib/python3.11/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 10 fields but got 6: Expected `Message` - serialized value may not be as expected [field_name='message', input_value=Message(content="Based on... plan is fulfilled.\n"}), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [field_name='choices', input_value=Choices(finish_reason='to..._reason': 'tool_calls'}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+[92m11:42:37 - LiteLLM:INFO[0m: utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+2026-04-20 11:42:37,973 - INFO - utils.py:3748 - 
+LiteLLM completion() model= minimax/minimax-m2.5:free; provider = openrouter
+INFO:     127.0.0.1:37654 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37654 - "GET /favicon.ico HTTP/1.1" 404 Not Found

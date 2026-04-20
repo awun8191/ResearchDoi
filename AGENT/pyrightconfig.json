@@ -1,0 +1,10 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "src",
+    "smoke_test_pipeline.py"
+  ],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic"
+}

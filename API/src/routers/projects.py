@@ -17,7 +17,7 @@ import logging
 from urllib.parse import unquote
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 
 from src.core.dependencies import get_current_user
 from src.models.project import (
@@ -27,7 +27,6 @@ from src.models.project import (
     UpdateProjectRequest,
 )
 from src.service import projects as project_service
-from src.service.ingestion import ingest_pdf
 from src.service.web_loader import load_web_page
 from src.service import storage as storage_service
 import re
@@ -45,7 +44,7 @@ def _require_project(project: ProjectResponse | None, project_id: str) -> Projec
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project '{project_id}' not found",
         )
-    return project  # type: ignore[return-value]  # noqa: always raised above
+    return project  # type: ignore[return-value]
 
 
 
@@ -261,7 +260,6 @@ async def _try_upload_pdf(
 async def add_source(
     project_id: str,
     body: AddSourceRequest,
-    background_tasks: BackgroundTasks,
     user: dict[str, Any] = Depends(get_current_user),
 ) -> ProjectResponse:
     """
@@ -333,47 +331,6 @@ async def add_source(
         source_data=source_dict,
     )
 
-    # ── Background Ingestion ────────────────────────────────────────────────
-    if pdf_bytes and body.doi:
-        base_meta = {
-            "title": body.title,
-            "authors": body.authors,
-            "journal": body.journal,
-            "date": body.date
-        }
-        background_tasks.add_task(
-            ingest_pdf,
-            uid=uid,
-            project_id=project_id,
-            doi=body.doi,
-            pdf_bytes=pdf_bytes,
-            base_metadata=base_meta
-        )
-        
-    # Import to Vertex AI RAG Corpus if project has one
-    if project and project.corpus_id and storage_path:
-        def _import_to_rag(s_path, c_id):
-            import os
-            from firebase_admin import storage as fa_storage
-            from vertexai import rag
-            import vertexai
-            try:
-                bucket_name = fa_storage.bucket().name
-                gcs_uri = f"gs://{bucket_name}/{s_path}"
-                
-                PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "researchassistant-3446d")
-                LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-                vertexai.init(project=PROJECT_ID, location=LOCATION)
-                
-                corpus_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{c_id}"
-                rag.import_files(rag_corpus=corpus_name, paths=[gcs_uri])
-                logger.info(f"[projects] Imported {gcs_uri} to Vertex AI corpus {c_id}")
-            except Exception as e:
-                logger.error(f"[projects] Failed to import {s_path} to Vertex AI: {e}")
-        
-        background_tasks.add_task(_import_to_rag, storage_path, project.corpus_id)
-    # ────────────────────────────────────────────────────────────────────────
-
     return _require_project(project, project_id)
 
 
@@ -384,14 +341,12 @@ async def add_source(
 )
 async def add_source_file(
     project_id: str,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(None),
     user: dict[str, Any] = Depends(get_current_user),
 ) -> ProjectResponse:
     """
-    Uploads a file directly (PDF, TXT, DOCX), saves to Firebase Storage,
-    and imports into the project's Vertex AI RAG corpus.
+    Uploads a file directly (PDF, TXT, DOCX) and saves it to Firebase Storage.
     """
     from datetime import datetime, timezone
     
@@ -439,39 +394,6 @@ async def add_source_file(
         source_data=source_dict,
     )
     
-    # Local store ingestion for PDF
-    if filename.lower().endswith('.pdf') and _is_pdf_bytes(file_bytes):
-        background_tasks.add_task(
-            ingest_pdf,
-            uid=uid,
-            project_id=project_id,
-            doi=f"file_{uuid.uuid4().hex[:8]}", # Dummy ID for local ingestion
-            pdf_bytes=file_bytes,
-            base_metadata={"title": source_dict["title"]}
-        )
-
-    if project and project.corpus_id and upload.storage_path:
-        def _import_to_rag(s_path, c_id):
-            import os
-            from firebase_admin import storage as fa_storage
-            from vertexai import rag
-            import vertexai
-            try:
-                bucket_name = fa_storage.bucket().name
-                gcs_uri = f"gs://{bucket_name}/{s_path}"
-                
-                PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "researchassistant-3446d")
-                LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-                vertexai.init(project=PROJECT_ID, location=LOCATION)
-                
-                corpus_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{c_id}"
-                rag.import_files(rag_corpus=corpus_name, paths=[gcs_uri])
-                logger.info(f"[projects] Imported {gcs_uri} to Vertex AI corpus {c_id}")
-            except Exception as e:
-                logger.error(f"[projects] Failed to import {s_path} to Vertex AI: {e}")
-        
-        background_tasks.add_task(_import_to_rag, upload.storage_path, project.corpus_id)
-
     return _require_project(project, project_id)
 
 

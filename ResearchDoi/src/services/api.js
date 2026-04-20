@@ -13,40 +13,12 @@
  * (the browser sets it automatically with the correct boundary).
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-const API_KEY = import.meta.env.VITE_API_KEY ?? '';
+const API_BASE = import.meta.env?.VITE_API_BASE_URL ?? '';
+const API_KEY = import.meta.env?.VITE_API_KEY ?? '';
 
-/**
- * Authenticated fetch wrapper.
- * Attaches the static API key as an X-Api-Key header on every request.
- * Throws an Error with the API's `detail` message on non-2xx responses.
- *
- * @param {string} path      - API path, e.g. '/api/chat/message'
- * @param {RequestInit & { userId?: string }} [options] - Standard fetch options plus an optional explicit userId.
- * @returns {Promise<Response>}
- */
 export async function apiFetch(path, options = {}) {
     const isFormData = options.body instanceof FormData;
-    let userId = options.userId;
-    
-    if (!userId) {
-        // Keep API writes in the same user document path used by client Firestore.
-        const firebaseAuthStorageKey = Object.keys(localStorage).find((k) =>
-            k.startsWith('firebase:authUser:')
-        );
-        const firebaseUserRaw = firebaseAuthStorageKey
-            ? localStorage.getItem(firebaseAuthStorageKey)
-            : localStorage.getItem('firebase:authUser');
-        
-        if (firebaseUserRaw) {
-            try {
-                const parsed = JSON.parse(firebaseUserRaw);
-                userId = parsed?.uid || '';
-            } catch {
-                userId = '';
-            }
-        }
-    }
+    let userId = options.userId || 'localUser';
 
     const headers = {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),

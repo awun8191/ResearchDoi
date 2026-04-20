@@ -5,8 +5,7 @@ Mirrors the Firestore document shape managed by the frontend
 `projectService.js` — field names and types match exactly.
 """
 
-from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -69,7 +68,6 @@ class ProjectResponse(BaseModel):
     name: str
     instructions: str = ""
     sources: list[SourceItem] = []
-    corpus_id: Optional[str] = None
     # Firestore Timestamps are serialised to ISO-8601 strings at the service layer
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

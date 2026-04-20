@@ -1,0 +1,167 @@
+INFO:     Will watch for changes in these directories: ['/home/nasbombz/Documents/Projects/ResearchDoi/API']
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+INFO:     Started reloader process [51890] using WatchFiles
+INFO:     Started server process [51910]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+INFO:     127.0.0.1:38746 - "OPTIONS /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:38748 - "GET /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:38884 - "GET /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50242 - "OPTIONS /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50256 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50256 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50272 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50272 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33592 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33592 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58884 - "OPTIONS /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=doi%3A10.3390%2Fs25051295&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got empty first page; stopping generation
+WARNING:src.service.arxiv_lookup:No results found in ArXiv for query: https://doi.org/10.3390/s25051295
+INFO:     127.0.0.1:58890 - "GET /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37340 - "OPTIONS /api/doi/soiling HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asoiling&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 2099 total results
+INFO:     127.0.0.1:37344 - "GET /api/doi/soiling HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'src/service/doi_lookup.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [51910]
+INFO:     Started server process [53251]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51182 - "OPTIONS /api/doi/search?q=soiling%20detection&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:51194 - "GET /api/doi/search?q=soiling%20detection&limit=10 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'src/routers/doi.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53251]
+INFO:     Started server process [53378]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'test_doi.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53378]
+INFO:     Started server process [53542]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=doi%3A10.3390%2Fs25051295&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got empty first page; stopping generation
+WARNING:src.service.arxiv_lookup:No results found in ArXiv for query: https://doi.org/10.3390/s25051295
+INFO:     127.0.0.1:59792 - "GET /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59792 - "OPTIONS /api/pdf/resolve?doi=10.3390%2Fs25051295 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://api.unpaywall.org/v2/10.3390/s25051295?email=awun8191%40gmail.com "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://api.semanticscholar.org/graph/v1/paper/DOI:10.3390/s25051295?fields=openAccessPdf "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:36920 - "OPTIONS /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=doi%3A10.3390%2Fs25051295&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got empty first page; stopping generation
+WARNING:src.service.arxiv_lookup:No results found in ArXiv for query: https://doi.org/10.3390/s25051295
+INFO:     127.0.0.1:36930 - "GET /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36930 - "OPTIONS /api/pdf/resolve?doi=10.3390%2Fs25051295 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://api.openalex.org/works/doi:10.3390/s25051295?mailto=awun8191%40gmail.com "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://doi.org/10.3390/s25051295 "HTTP/1.1 302 Found"
+INFO:httpx:HTTP Request: GET https://www.mdpi.com/1424-8220/25/5/1295 "HTTP/1.1 403 Forbidden"
+INFO:     127.0.0.1:36904 - "GET /api/pdf/resolve?doi=10.3390%2Fs25051295 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://api.unpaywall.org/v2/10.3390/s25051295?email=awun8191%40gmail.com "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://api.semanticscholar.org/graph/v1/paper/DOI:10.3390/s25051295?fields=openAccessPdf "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://api.openalex.org/works/doi:10.3390/s25051295?mailto=awun8191%40gmail.com "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://doi.org/10.3390/s25051295 "HTTP/1.1 302 Found"
+INFO:httpx:HTTP Request: GET https://www.mdpi.com/1424-8220/25/5/1295 "HTTP/1.1 403 Forbidden"
+INFO:     127.0.0.1:36904 - "GET /api/pdf/resolve?doi=10.3390%2Fs25051295 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41898 - "OPTIONS /api/doi/2401.00001 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=&id_list=2401.00001&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 1 of 1 total results
+INFO:     127.0.0.1:41908 - "GET /api/doi/2401.00001 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'src/routers/doi.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53542]
+INFO:     Started server process [54018]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+INFO:     127.0.0.1:39654 - "OPTIONS /api/doi/search?q=soiling&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:55288 - "GET /api/doi/search?q=soiling&limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55298 - "OPTIONS /api/doi/search?q=Deep%20Learning%20Research&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Sleeping: 0.834950 seconds
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:55308 - "GET /api/doi/search?q=Deep%20Learning%20Research&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:44360 - "GET /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:51428 - "GET /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:41570 - "GET /api/doi/search?q=soiling&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:45210 - "GET /api/doi/search?q=Quantum%20Computing&limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38670 - "OPTIONS /api/doi/Physics HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3APhysics&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 1081918 total results
+INFO:     127.0.0.1:38684 - "GET /api/doi/Physics HTTP/1.1" 200 OK
+INFO:arxiv:Sleeping: 1.984396 seconds
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:38670 - "GET /api/doi/search?q=soiling&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=doi%3A10.3390%2Fs25051295&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got empty first page; stopping generation
+WARNING:src.service.arxiv_lookup:No results found in ArXiv for query: https://doi.org/10.3390/s25051295
+INFO:     127.0.0.1:37694 - "GET /api/doi/https%3A//doi.org/10.3390/s25051295 HTTP/1.1" 200 OK
+WARNING:src.service.pdf_resolver:[pdf_resolver] Unpaywall failed: [Errno -2] Name or service not known
+WARNING:src.service.pdf_resolver:[pdf_resolver] OpenAlex failed: [Errno -2] Name or service not known
+WARNING:src.service.pdf_resolver:[pdf_resolver] Semantic Scholar failed: [Errno -2] Name or service not known
+INFO:     127.0.0.1:37694 - "GET /api/pdf/resolve?doi=10.3390%2Fs25051295 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37706 - "OPTIONS /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37718 - "OPTIONS /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37732 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51266 - "GET /api/history?limit=12&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33264 - "OPTIONS /api/doi/search?q=AI&limit=10 HTTP/1.1" 200 OK
+INFO:arxiv:Requesting page (first: True, try: 0): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+WARNING:  WatchFiles detected changes in 'src/models/doi.py'. Reloading...
+INFO:arxiv:Requesting page (first: True, try: 1): https://export.arxiv.org/api/query?search_query=all%3Asearch&id_list=&sortBy=relevance&sortOrder=descending&start=0&max_results=100
+INFO:arxiv:Got first page: 100 of 115360 total results
+INFO:     127.0.0.1:33278 - "GET /api/doi/search?q=AI&limit=10 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [54018]
+WARNING:  WatchFiles detected changes in 'src/routers/doi.py', 'src/service/arxiv_lookup.py'. Reloading...
+INFO:     Started server process [56166]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:main:Firebase Admin SDK shut down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [56166]
+INFO:     Started server process [56206]
+INFO:     Waiting for application startup.
+INFO:main:Firebase Admin SDK initialised via service account file
+INFO:     Application startup complete.
