@@ -6,37 +6,66 @@ import React, { useState } from 'react';
  * @param {boolean} props.loading
  */
 export default function SearchInput({ onSearch, loading }) {
-  const [doi, setDoi] = useState('');
+  const [query, setQuery] = useState('');
+  const [searchMode, setSearchMode] = useState('auto'); // auto, id, topic
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (doi.trim()) onSearch(doi.trim());
+    if (query.trim()) onSearch(query.trim(), searchMode);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="search-form-grok">
-      <div className="input-pill">
-        <div className="pill-left">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pill-icon">
-            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
+    <form onSubmit={handleSubmit} className="search-form-lab">
+      <div className="search-mode-selector slide-up">
+        <button 
+          type="button"
+          className={`mode-btn ${searchMode === 'auto' ? 'active' : ''}`}
+          onClick={() => setSearchMode('auto')}
+        >
+          AUTO
+        </button>
+        <button 
+          type="button"
+          className={`mode-btn ${searchMode === 'id' ? 'active' : ''}`}
+          onClick={() => setSearchMode('id')}
+        >
+          IDENTIFIER
+        </button>
+        <button 
+          type="button"
+          className={`mode-btn ${searchMode === 'topic' ? 'active' : ''}`}
+          onClick={() => setSearchMode('topic')}
+        >
+          TOPIC
+        </button>
+      </div>
+
+      <div className="input-lab glass">
+        <div className="lab-left">
+          <div className="id-tag">
+            {searchMode === 'auto' ? 'AI DETECT' : searchMode.toUpperCase()}
+          </div>
           <input
             type="text"
-            className="grok-input"
-            placeholder="Search with DOI or keyword..."
-            value={doi}
-            onChange={(e) => setDoi(e.target.value)}
+            className="lab-input"
+            placeholder={
+              searchMode === 'id' ? "Enter DOI or ArXiv ID..." :
+              searchMode === 'topic' ? "Enter research topic..." :
+              "Search scholarly DOI or keyword..."
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
-        <div className="pill-actions">
-          <button type="submit" className="pill-submit" disabled={loading || !doi.trim()}>
+        <div className="lab-actions">
+          <button type="submit" className="lab-submit" disabled={loading || !query.trim()}>
             {loading ? (
               <div className="loader-ring"></div>
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <polyline points="19 12 12 19 5 12"></polyline>
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
               </svg>
             )}
           </button>
@@ -44,70 +73,93 @@ export default function SearchInput({ onSearch, loading }) {
       </div>
 
       <style>{`
-        .search-form-grok {
+        .search-form-lab {
           width: 100%;
           max-width: 600px;
           margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
         }
-:root {
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
-}
-        .input-pill {
+
+        .search-mode-selector {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.25rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          width: fit-content;
+          align-self: center;
+        }
+
+        .mode-btn {
+          background: transparent;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-family: var(--font-mono);
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: var(--text-dim);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          letter-spacing: 0.05em;
+        }
+
+        .mode-btn:hover {
+          color: var(--text-main);
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .mode-btn.active {
+          background: var(--secondary);
+          color: #fff;
+          box-shadow: 0 4px 12px var(--secondary-glow);
+        }
+
+        .input-lab {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: var(--bg-input);
+          background: rgba(0, 0, 0, 0.6);
           border: 1px solid var(--border);
-          border-radius: var(--radius-full);
-          padding: 0.65rem 0.65rem 0.65rem 1.75rem;
-          transition: var(--transition-base);
-          box-shadow: var(--shadow-sm);
+          border-radius: 18px;
+          padding: 0.65rem 0.65rem 0.65rem 1.25rem;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
           position: relative;
-          overflow: hidden;
         }
 
-        .input-pill::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-          transform: translateX(-100%);
-          transition: transform 0.8s ease;
-          pointer-events: none;
-        }
-
-        .input-pill:hover::before {
-          transform: translateX(100%);
-        }
-
-        .input-pill:focus-within {
+        .input-lab:focus-within {
           border-color: var(--secondary);
-          background: var(--bg-surface);
-          box-shadow: 0 0 0 2px var(--secondary-glow), 0 0 35px var(--secondary-glow);
+          background: rgba(15, 23, 42, 0.6);
+          box-shadow: 0 0 40px var(--secondary-glow);
+          transform: translateY(-2px);
         }
 
-        .pill-left {
+        .lab-left {
           display: flex;
           align-items: center;
           gap: 1.25rem;
           flex: 1;
         }
 
-        .pill-icon {
-          color: var(--text-dim);
-          transition: var(--transition-fast);
-        }
-
-        .input-pill:focus-within .pill-icon {
+        .id-tag {
+          font-family: var(--font-mono);
+          font-size: 0.6rem;
+          font-weight: 800;
           color: var(--secondary);
-          transform: scale(1.1);
+          background: var(--secondary-glow);
+          padding: 0.25rem 0.6rem;
+          border-radius: 4px;
+          letter-spacing: 0.15em;
+          border: 1px solid var(--secondary-glow);
+          opacity: 0.8;
         }
 
-        .grok-input {
+        .lab-input {
           flex: 1;
           background: transparent;
           border: none;
@@ -119,51 +171,54 @@ export default function SearchInput({ onSearch, loading }) {
           font-family: var(--font-body);
         }
 
-        .grok-input::placeholder {
+        .lab-input::placeholder {
           color: var(--text-dim);
+          font-weight: 400;
         }
 
-        .pill-actions {
+        .lab-actions {
           display: flex;
           align-items: center;
-          gap: 0.85rem;
         }
 
-
-        .pill-submit {
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          background: var(--text-main);
-          color: var(--text-inverse);
+        .lab-submit {
+          width: 44px;
+          height: 44px;
+          border-radius: var(--radius-md);
+          background: var(--secondary);
+          color: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: var(--transition-base);
-          box-shadow: var(--shadow-md);
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 4px 12px var(--secondary-glow);
         }
 
-        .pill-submit:hover:not(:disabled) {
-          transform: scale(1.05) translateY(-1px);
-          box-shadow: 0 4px 20px rgba(255,255,255,0.2);
+        .lab-submit:hover:not(:disabled) {
+          transform: scale(1.05);
+          filter: brightness(1.1);
+          box-shadow: 0 0 20px var(--secondary);
         }
 
-        .pill-submit:active:not(:disabled) {
+        .lab-submit:active:not(:disabled) {
           transform: scale(0.95);
         }
 
-        .pill-submit:disabled {
-          background: var(--bg-surface);
+        .lab-submit:disabled {
+          background: rgba(255,255,255,0.05);
           color: var(--text-dim);
           cursor: not-allowed;
           opacity: 0.5;
+          box-shadow: none;
         }
 
         .loader-ring {
           width: 20px;
           height: 20px;
-          border: 2px solid rgba(0,0,0,0.1);
-          border-top-color: currentColor;
+          border: 2px solid rgba(255,255,255,0.1);
+          border-top-color: #ffffff;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }

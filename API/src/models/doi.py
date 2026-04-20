@@ -16,6 +16,17 @@ class DoiMetadataResponse(BaseModel):
     publication_year: Optional[int] = None
     venue: Optional[str] = None
     url: Optional[str] = None
+    pdf_url: Optional[str] = None
+    abstract: Optional[str] = None
     # Firebase Storage coupling — null until user uploads PDF
     storage_path: Optional[str] = None
     document_url: Optional[str] = None
+
+
+class DoiSearchResponse(BaseModel):
+    """
+    Response model for the /api/doi/search endpoint.
+    """
+    query: str
+    results: list[DoiMetadataResponse]
+    total: int

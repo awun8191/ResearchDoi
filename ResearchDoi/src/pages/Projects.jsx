@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { onUserProjects, createProject, deleteProject } from '../services/projectService';
 import { Plus, Trash2, FolderOpen, Folder, X, Loader2, Search } from 'lucide-react';
+import { CircularProgress } from '@mui/material';
+
+const currentUser = { uid: "localUser" };
 
 export default function Projects() {
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export default function Projects() {
   function formatDate(timestamp) {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-GB', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -68,30 +69,30 @@ export default function Projects() {
   }
 
   return (
-    <div className="projects-page">
+    <div className="projects-lab stagger-in">
       <header className="projects-header">
-        <div>
-          <h1 className="projects-title">Projects</h1>
-          <p className="projects-subtitle">Your research workspaces</p>
+        <div className="header-info">
+          <h1>Projects</h1>
+          <p>Manage your research workspaces.</p>
         </div>
-        <button className="btn-create" onClick={() => setShowModal(true)}>
+        <button className="btn-new-project" onClick={() => setShowModal(true)}>
           <Plus size={18} />
-          New Project
+          <span>New Project</span>
         </button>
       </header>
 
-      <div className="projects-actions">
-        <div className="search-pill glass">
+      <div className="lab-search-zone">
+        <div className="lab-search-pill glass">
           <Search size={18} className="search-icon" />
           <input
             type="text"
-            placeholder="Search projects..."
+            placeholder="FILTER WORKSPACES..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+            className="lab-search-input"
           />
           {searchTerm && (
-            <button className="clear-search" onClick={() => setSearchTerm('')}>
+            <button className="clear-lab-search" onClick={() => setSearchTerm('')}>
               <X size={14} />
             </button>
           )}
@@ -99,99 +100,107 @@ export default function Projects() {
       </div>
 
       {loading ? (
-        <div className="projects-loading">
-          <Loader2 size={32} className="spin" />
+        <div className="lab-loading">
+          <CircularProgress size={32} sx={{ color: 'var(--secondary)' }} />
+          <p>SYNCHRONIZING REGISTRY...</p>
         </div>
-      ) : projects.length === 0 ? (
-        <div className="projects-empty">
-          <FolderOpen size={64} strokeWidth={1} className="empty-icon" />
-          <h2>No projects yet</h2>
-          <p>Create your first research project to start organizing DOIs and sources.</p>
-          <button className="btn-create-lg" onClick={() => setShowModal(true)}>
+      ) : projects.length === 0 && !loading ? (
+        <div className="lab-empty glass stagger-in">
+          <div className="lab-empty-icon">
+            <Folder size={64} strokeWidth={1} />
+          </div>
+          <h3>REGISTRY EMPTY</h3>
+          <p>No analytical workspaces identified. Initialize a project to begin indexing research data.</p>
+          <button className="btn-init-large" onClick={() => setShowModal(true)}>
             <Plus size={20} />
-            Create Your First Project
+            INITIALIZE WORKSPACE
           </button>
         </div>
       ) : (
-        <div className="projects-grid">
+        <div className="lab-grid stagger-in">
           {filteredProjects.length === 0 ? (
-            <div className="no-results">
-              <p>No projects match "{searchTerm}"</p>
+            <div className="lab-no-results glass">
+              <p>NO WORKSPACES MATCHING SPECIFIED CRITERIA</p>
             </div>
           ) : filteredProjects.map((project, i) => (
             <div
               key={project.id}
-              className="project-card"
+              className="lab-project-card interactable"
               onClick={() => navigate(`/projects/${project.id}`)}
               style={{ animationDelay: `${i * 0.05}s` }}
             >
               <div className="card-top">
-                <div className="card-icon">
-                  <Folder size={18} />
+                <div className="lab-icon-box">
+                  <FolderOpen size={20} />
                 </div>
                 <button
-                  className="card-delete"
+                  className="btn-terminate"
                   onClick={(e) => handleDelete(e, project.id)}
-                  title="Delete project"
+                  title="Terminate workspace"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </div>
-              <h3 className="card-name">{project.name}</h3>
-              {project.instructions && (
-                <p className="card-desc">{project.instructions}</p>
-              )}
-              <div className="card-meta">
-                <span className="source-count">
-                  {project.sources?.length || 0} source{(project.sources?.length || 0) !== 1 ? 's' : ''}
-                </span>
-                <span className="card-date">{formatDate(project.createdAt)}</span>
+              <div className="card-main">
+                <h3 className="project-title">{project.name}</h3>
+                <p className="project-instructions">
+                  {project.instructions || "General research and DOI analysis workspace."}
+                </p>
               </div>
+              <div className="card-meta-row">
+                <div className="meta-item">
+                  <span className="meta-val">{project.sources?.length || 0}</span>
+                  <span className="meta-lbl">DATA SOURCES</span>
+                </div>
+                <div className="meta-date">{formatDate(project.createdAt)}</div>
+              </div>
+              <div className="lab-accent-glow"></div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Create Project Modal */}
+      {/* Initialize Workspace Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content glass" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>New Project</h2>
+          <div className="modal-content-lab glass" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-id-group">
+                <div className="modal-pulse"></div>
+                <h2>WORKSPACE CONFIGURATION</h2>
+              </div>
               <button className="modal-close" onClick={() => setShowModal(false)}>
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleCreate}>
-              <div className="form-group">
-                <label htmlFor="project-name">Project Name</label>
+            <form onSubmit={handleCreate} className="lab-form">
+              <div className="lab-group">
+                <label>IDENTIFIER</label>
                 <input
-                  id="project-name"
                   type="text"
-                  placeholder="e.g. Final Year Research"
+                  placeholder="E.G. QUANTUM_PHYSICS_2026"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   autoFocus
                   required
                 />
               </div>
-              <div className="form-group">
-                <label htmlFor="project-instructions">Instructions <span className="optional">(optional)</span></label>
+              <div className="lab-group">
+                <label>STRATEGIC INSTRUCTIONS</label>
                 <textarea
-                  id="project-instructions"
-                  placeholder="Describe the project goals, research focus, or any specific instructions..."
+                  placeholder="DEFINE ANALYTICAL FOCUS OR GROUNDING PARAMETERS..."
                   value={formData.instructions}
                   onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                  rows={4}
+                  rows={5}
                 />
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
-                  Cancel
+              <div className="modal-ops">
+                <button type="button" className="btn-lab-cancel" onClick={() => setShowModal(false)}>
+                  ABORT
                 </button>
-                <button type="submit" className="btn-submit" disabled={creating || !formData.name.trim()}>
-                  {creating ? <Loader2 size={16} className="spin" /> : <Plus size={16} />}
-                  {creating ? 'Creating...' : 'Create Project'}
+                <button type="submit" className="btn-lab-submit" disabled={creating || !formData.name.trim()}>
+                  {creating ? <CircularProgress size={16} color="inherit" /> : <Plus size={18} />}
+                  <span>{creating ? 'INITIALIZING...' : 'INITIALIZE'}</span>
                 </button>
               </div>
             </form>
@@ -200,253 +209,116 @@ export default function Projects() {
       )}
 
       <style>{`
-        .projects-page {
-          padding: 2rem 3rem;
-          width: 100%;
-          margin: 0;
-          min-height: 100vh;
-          max-width: 1400px;
-          margin: 0 auto;
-        }
+        .projects-lab {
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    min-height: 100vh;
+  }
 
-        .projects-actions {
-          margin-bottom: 2rem;
+  .projects-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-info h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .header-info p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .btn-new-project {
+    background: var(--secondary);
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+
+  .btn-new-project:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+        .lab-search-zone {
           display: flex;
-          align-items: center;
           justify-content: center;
-          gap: 1rem;
-          width: 100%;
         }
 
-        .search-pill {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 0.8rem 1.25rem;
-          background: var(--bg-input);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-full);
+        .lab-search-pill {
           width: 100%;
           max-width: 600px;
-          transition: var(--transition-base);
-          box-shadow: var(--shadow-sm);
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.8rem 1.5rem;
+          border-radius: var(--radius-lg);
+          transition: all 0.3s ease;
         }
 
-        .search-pill:focus-within {
+        .lab-search-pill:focus-within {
           border-color: var(--secondary);
-          box-shadow: 0 0 0 2px var(--secondary-glow), var(--shadow-md);
+          background: rgba(0, 0, 0, 0.2);
+          box-shadow: 0 0 40px var(--secondary-glow);
         }
 
-        .search-icon {
-          color: var(--text-dim);
-          width: 20px;
-          height: 20px;
-        }
-
-        .search-input {
+        .lab-search-input {
           flex: 1;
           background: transparent;
           border: none;
           color: var(--text-main);
-          font-size: 1.05rem;
+          font-family: var(--font-mono);
+          font-size: 0.85rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
           outline: none;
         }
 
-        .search-input::placeholder {
-          color: var(--text-dim);
-        }
-
-        .clear-search {
-          color: var(--text-dim);
-          padding: 0.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          transition: var(--transition-fast);
-        }
-
-        .clear-search:hover {
-          background: var(--primary-glow);
-          color: var(--text-main);
-        }
-
-        .no-results {
-          grid-column: 1 / -1;
-          padding: 4rem 2rem;
-          text-align: center;
-          color: var(--text-dim);
-          background: var(--bg-surface);
-          border: 1px dashed var(--border);
-          border-radius: var(--radius-xl);
-        }
-
-        .projects-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 2rem;
-        }
-
-        @media (max-width: 768px) {
-           .projects-page {
-              max-width: 100%;
-              margin: 0;
-              padding: 1.5rem !important;
-              display: flex;
-              flex-direction: column;
-           }
-           .projects-header {
-              padding-top: 0;
-              margin-bottom: 1.5rem;
-              order: 2;
-              justify-content: flex-end;
-           }
-           .projects-actions {
-              order: 1;
-              margin-bottom: 1.5rem;
-              justify-content: center;
-              padding: 0 0.5rem;
-           }
-           .search-pill {
-              max-width: 100%;
-           }
-           .projects-loading,
-           .projects-empty,
-           .projects-grid {
-              order: 3;
-           }
-           .projects-grid {
-              grid-template-columns: 1fr;
-           }
-           .projects-header > div:first-child {
-              display: none; /* Hide title/subtitle as AppBar has it */
-           }
-        }
-
-        .projects-header h1.projects-title {
-          font-size: 2rem;
-          font-weight: 800;
-          letter-spacing: -0.03em;
-          margin-bottom: 0.25rem;
-          color: var(--text-main);
-        }
-
-        .projects-subtitle {
-          color: var(--text-dim);
-          font-size: 0.9rem;
-        }
-
-        .btn-create {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.25rem;
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-text);
-          font-weight: 600;
-          font-size: 0.9rem;
-          border-radius: var(--radius-lg);
-          transition: var(--transition-fast);
-          box-shadow: 0 4px 12px var(--secondary-glow);
-        }
-
-        .btn-create:hover {
-          opacity: 0.95;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px var(--secondary-glow);
-        }
-
-        /* Loading */
-        .projects-loading {
-          display: flex;
-          justify-content: center;
-          padding: 6rem 0;
-          color: var(--text-dim);
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        /* Empty State */
-        .projects-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 6rem 2rem;
-          gap: 1rem;
-        }
-
-        .empty-icon {
-          color: var(--text-dim);
-          opacity: 0.4;
-          margin-bottom: 1rem;
-        }
-
-        .projects-empty h2 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: var(--text-main);
-        }
-
-        .projects-empty p {
-          color: var(--text-dim);
-          max-width: 400px;
-          line-height: 1.5;
-        }
-
-        .btn-create-lg {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.85rem 1.75rem;
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-text);
-          font-weight: 600;
-          font-size: 1rem;
-          border-radius: var(--radius-lg);
-          margin-top: 1rem;
-          transition: var(--transition-fast);
-          box-shadow: 0 4px 15px var(--secondary-glow);
-        }
-
-        .btn-create-lg:hover {
-          opacity: 0.95;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px var(--secondary-glow);
-        }
-
-        /* Project Grid */
-        .projects-grid {
+        .lab-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 1.25rem;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 1.5rem;
         }
 
-        .project-card {
-          cursor: pointer;
+        .lab-project-card {
+          background: var(--bg-card);
+          backdrop-filter: var(--glass-blur);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          padding: 2rem;
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
-          padding: 1.5rem;
-          animation: slideUp 0.4s ease forwards;
-          opacity: 0;
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-xl);
-          transition: var(--transition-fast);
+          gap: 1.75rem;
+          min-height: 260px;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        .project-card:hover {
-          border-color: var(--border-bright);
+        .lab-project-card:hover {
+          border-color: var(--secondary);
+          transform: translateY(-5px);
+          background: rgba(30, 41, 59, 0.6);
         }
 
         .card-top {
@@ -455,212 +327,329 @@ export default function Projects() {
           justify-content: space-between;
         }
 
-        .card-icon {
-          width: 36px;
-          height: 36px;
+        .lab-icon-box {
+          width: 44px;
+          height: 44px;
+          background: var(--bg-body);
+          border: 1px solid var(--glass-border);
           border-radius: var(--radius-md);
-          background: var(--secondary-glow);
           display: flex;
           align-items: center;
           justify-content: center;
           color: var(--secondary);
+          transition: all 0.3s ease;
         }
 
-        .card-delete {
-          width: 28px;
-          height: 28px;
-          border-radius: var(--radius-sm);
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .lab-project-card:hover .lab-icon-box {
+          border-color: var(--secondary);
+          box-shadow: 0 0 15px var(--secondary-glow);
+        }
+
+        .btn-terminate {
           background: transparent;
+          border: none;
           color: var(--text-dim);
-          opacity: 0;
+          padding: 0.5rem;
+          border-radius: var(--radius-sm);
           transition: var(--transition-fast);
+          opacity: 0;
         }
 
-        .project-card:hover .card-delete {
+        .lab-project-card:hover .btn-terminate {
           opacity: 1;
         }
 
-        .card-delete:hover {
-          color: #fb7185;
-          background: rgba(244, 63, 94, 0.1);
+        .btn-terminate:hover {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
         }
 
-        .card-name {
-          font-size: 1.1rem;
-          font-weight: 600;
-          line-height: 1.3;
+        .project-title {
+          font-family: var(--font-heading);
+          font-size: 1.4rem;
+          font-weight: 800;
+          color: var(--text-main);
+          margin-bottom: 0.6rem;
+          letter-spacing: -0.03em;
         }
 
-        .card-desc {
-          font-size: 0.85rem;
+        .project-instructions {
+          font-size: 0.9rem;
           color: var(--text-muted);
-          line-height: 1.5;
+          line-height: 1.6;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
 
-        .card-meta {
+        .card-meta-row {
+          margin-top: auto;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          padding-top: 1.25rem;
+          border-top: 1px solid var(--border);
+        }
+
+        .meta-item {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .meta-val {
+          font-family: var(--font-mono);
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: var(--text-main);
+        }
+
+        .meta-lbl {
+          font-family: var(--font-mono);
+          font-size: 0.55rem;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+          color: var(--text-dim);
+        }
+
+        .meta-date {
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          color: var(--text-dim);
+          text-transform: uppercase;
+        }
+
+        .lab-accent-glow {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: var(--secondary);
+          opacity: 0;
+          transition: 0.4s ease;
+          box-shadow: 0 -4px 15px var(--secondary);
+        }
+
+        .lab-project-card:hover .lab-accent-glow {
+          opacity: 1;
+        }
+
+        .lab-loading {
+          padding: 6rem;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1.5rem;
+        }
+
+        .lab-loading p {
+          font-family: var(--font-mono);
+          font-size: 0.8rem;
+          letter-spacing: 0.2em;
+          color: var(--text-dim);
+        }
+
+        .lab-empty {
+          padding: 5rem 3rem;
+          text-align: center;
+          border-radius: var(--radius-xl);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2rem;
+          border: 1px dashed var(--glass-border);
+        }
+
+        .lab-empty-icon {
+          color: var(--text-dim);
+          opacity: 0.3;
+        }
+
+        .lab-empty h3 {
+          font-family: var(--font-mono);
+          font-size: 1.1rem;
+          letter-spacing: 0.4em;
+          color: var(--text-main);
+        }
+
+        .lab-empty p {
+          max-width: 420px;
+          color: var(--text-muted);
+          line-height: 1.6;
+        }
+
+        .btn-init-large {
+          background: var(--secondary);
+          color: #fff;
+          border: none;
+          padding: 1.25rem 2.5rem;
+          border-radius: var(--radius-md);
+          font-family: var(--font-mono);
+          font-weight: 800;
+          font-size: 0.8rem;
+          letter-spacing: 0.15em;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-top: auto;
-          padding-top: 0.75rem;
-          border-top: 1px solid var(--border);
+          gap: 1rem;
+          cursor: pointer;
+          transition: all 0.4s ease;
+          box-shadow: 0 10px 30px var(--secondary-glow);
+        }
+
+        .lab-no-results {
+          grid-column: 1 / -1;
+          padding: 4rem;
+          text-align: center;
+          font-family: var(--font-mono);
           font-size: 0.75rem;
           color: var(--text-dim);
-          font-family: var(--font-mono);
+          letter-spacing: 0.1em;
         }
 
-        .source-count {
-          background: var(--primary-glow);
-          padding: 0.2rem 0.5rem;
-          border-radius: var(--radius-sm);
-        }
-
-        /* Modal */
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-          animation: fadeIn 0.2s ease;
-        }
-
-        .modal-content {
+        /* Modal Lab Styles */
+        .modal-content-lab {
           width: 100%;
-          max-width: 520px;
-          padding: 2rem;
+          max-width: 560px;
+          background: rgba(15, 23, 42, 0.95);
+          backdrop-filter: blur(30px);
+          border: 1px solid var(--glass-border);
           border-radius: var(--radius-xl);
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          padding: 2.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 2.5rem;
+          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
 
-        .modal-header {
+        .modal-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 1.75rem;
         }
 
-        .modal-header h2 {
-          font-size: 1.35rem;
-          font-weight: 700;
+        .modal-id-group {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
         }
 
-        .modal-close {
-          width: 32px;
-          height: 32px;
+        .modal-pulse {
+          width: 10px;
+          height: 10px;
+          background: var(--secondary);
+          border-radius: 50%;
+          box-shadow: 0 0 15px var(--secondary);
+          animation: pulse-glow 2s infinite;
+        }
+
+        .modal-head h2 {
+          font-family: var(--font-mono);
+          font-size: 0.9rem;
+          font-weight: 800;
+          letter-spacing: 0.2em;
+          color: var(--text-main);
+          margin: 0;
+        }
+
+        .lab-form {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .lab-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .lab-group label {
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          font-weight: 800;
+          color: var(--text-dim);
+          letter-spacing: 0.2em;
+        }
+
+        .lab-group input, .lab-group textarea {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid var(--glass-border);
           border-radius: var(--radius-md);
+          padding: 1rem;
+          color: var(--text-main);
+          font-family: var(--font-body);
+          font-size: 1rem;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        .lab-group input:focus, .lab-group textarea:focus {
+          border-color: var(--secondary);
+          background: rgba(0, 0, 0, 0.5);
+          box-shadow: 0 0 20px var(--secondary-glow);
+        }
+
+        .modal-ops {
+          display: flex;
+          gap: 1.25rem;
+          margin-top: 1rem;
+        }
+
+        .btn-lab-cancel {
+          flex: 1;
+          background: transparent;
+          border: 1px solid var(--glass-border);
+          color: var(--text-dim);
+          padding: 1rem;
+          border-radius: var(--radius-md);
+          font-family: var(--font-mono);
+          font-weight: 800;
+          font-size: 0.75rem;
+          letter-spacing: 0.1em;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .btn-lab-cancel:hover {
+          color: #fff;
+          border-color: #fff;
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-lab-submit {
+          flex: 2;
+          background: var(--secondary);
+          color: #fff;
+          border: none;
+          padding: 1rem;
+          border-radius: var(--radius-md);
+          font-family: var(--font-mono);
+          font-weight: 800;
+          font-size: 0.75rem;
+          letter-spacing: 0.1em;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: transparent;
-          color: var(--text-dim);
-          transition: var(--transition-fast);
-        }
-
-        .modal-close:hover {
-          background: var(--primary-glow);
-          color: var(--text-main);
-        }
-
-        .form-group {
-          margin-bottom: 1.25rem;
-        }
-
-        .form-group label {
-          display: block;
-          font-size: 0.85rem;
-          font-weight: 500;
-          color: var(--text-muted);
-          margin-bottom: 0.5rem;
-        }
-
-        .optional {
-          color: var(--text-dim);
-          font-weight: 400;
-        }
-
-        .form-group input,
-        .form-group textarea {
-          width: 100%;
-          padding: 0.85rem 1rem;
-          background: var(--bg-input);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          color: var(--text-main);
-          font-size: 0.95rem;
-          font-family: var(--font-body);
-          outline: none;
-          transition: var(--transition-fast);
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-          border-color: var(--border-bright);
-          box-shadow: 0 0 0 3px var(--primary-glow);
-        }
-
-        .form-group textarea {
-          resize: vertical;
-          min-height: 100px;
-        }
-
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
           gap: 0.75rem;
-          margin-top: 1.5rem;
+          cursor: pointer;
+          transition: all 0.4s ease;
+          box-shadow: 0 10px 25px var(--secondary-glow);
         }
 
-        .btn-cancel {
-          padding: 0.7rem 1.25rem;
-          background: transparent;
-          color: var(--text-muted);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          font-size: 0.9rem;
-          transition: var(--transition-fast);
+        .btn-lab-submit:hover:not(:disabled) {
+          filter: brightness(1.2);
+          transform: translateY(-2px);
         }
 
-        .btn-cancel:hover {
-          background: var(--primary-glow);
-          color: var(--text-main);
+        @media (max-width: 768px) {
+          .projects-lab { padding: 1.5rem; }
+          .projects-lab-header { flex-direction: column; align-items: stretch; padding: 2rem; }
+          .btn-init-lab { justify-content: center; }
+          .lab-grid { grid-template-columns: 1fr; }
         }
-
-        .btn-submit {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.7rem 1.25rem;
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-text);
-          font-weight: 600;
-          font-size: 0.9rem;
-          border-radius: var(--radius-md);
-          transition: var(--transition-fast);
-        }
-
-        .btn-submit:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px var(--secondary-glow);
-        }
-
-        .btn-submit:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
       `}</style>
     </div>
   );

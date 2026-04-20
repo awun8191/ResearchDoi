@@ -8,27 +8,18 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState(() => {
-        return localStorage.getItem('app-theme') || 'dark';
-    });
-
     const [colorScheme, setColorScheme] = useState(() => {
         return localStorage.getItem('app-color-scheme') || 'default';
     });
 
     useEffect(() => {
-        localStorage.setItem('app-theme', theme);
-        document.documentElement.setAttribute('data-theme', theme);
-    }, [theme]);
-
-    useEffect(() => {
         localStorage.setItem('app-color-scheme', colorScheme);
         document.documentElement.setAttribute('data-color', colorScheme);
+        // Force dark theme attribute as well for any legacy CSS
+        document.documentElement.setAttribute('data-theme', 'dark');
     }, [colorScheme]);
 
     const value = {
-        theme,
-        setTheme,
         colorScheme,
         setColorScheme
     };

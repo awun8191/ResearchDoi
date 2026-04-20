@@ -4,19 +4,21 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from src.core.dependencies import get_current_user
 from src.models.chat import (
+    ChatHistoryResponse,
+    ChatMessageItem,
     ChatMessageRequest,
     ChatMessageResponse,
-    ClearChatRequest,
-    ChatHistoryResponse,
+    ChatSessionItem,
     ChatSessionsResponse,
+    ClearChatRequest,
 )
+from src.models.project import ProjectResponse
+from src.core.config import settings
 from src.service import gemini as gemini_service
 from src.service import projects as project_service
-from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,7 +39,9 @@ async def list_sessions(
     sessions = await gemini_service.list_chat_sessions(
         uid=user["uid"], project_id=project_id
     )
-    return ChatSessionsResponse(sessions=sessions)
+    return ChatSessionsResponse(
+        sessions=[ChatSessionItem(**session) for session in sessions]
+    )
 
 
 @router.delete(
@@ -75,7 +79,18 @@ async def get_session(
         project_id=project_id,
         chat_id=chat_id,
     )
-    return ChatHistoryResponse(**history)
+    messages = [
+        ChatMessageItem(**message)
+        for message in history.get("messages", [])
+        if isinstance(message, dict)
+    ]
+    return ChatHistoryResponse(
+        chat_id=str(history.get("chat_id", chat_id)),
+        title=history.get("title")
+        if isinstance(history.get("title"), str) or history.get("title") is None
+        else None,
+        messages=messages,
+    )
 
 
 @router.post(
@@ -111,26 +126,88 @@ async def send_message(
             detail=f"Failed to get response from Gemini: {str(exc)}",
         )
 
-    return ChatMessageResponse(**reply)
+    return ChatMessageResponse(
+        reply=reply.get("reply", ""),
+        chat_id=str(reply.get("chat_id", body.chat_id)),
+        title=reply.get("title")
+        if isinstance(reply.get("title"), str) or reply.get("title") is None
+        else None,
+    )
 
 
 class AgentMessageRequest(BaseModel):
     project_id: str
-    chat_id: str
-    message: str
+    chat_id: str = Field(default="default", min_length=1)
+    message: str = Field(..., min_length=1)
+
+
+class AgentMessageResponse(ChatMessageResponse):
+    agent_response: dict[str, Any] | list[Any]
+
+
+def _build_agent_context(project: ProjectResponse) -> str:
+    context_parts = [
+        f"You are operating in Project '{project.name}'.",
+    ]
+    if project.instructions:
+        context_parts.append(f"Project instructions: {project.instructions}")
+    return f"[System Context: {' '.join(context_parts)}]\n\n"
+
+
+def _extract_text_from_parts(parts: Any) -> str:
+    if not isinstance(parts, list):
+        return ""
+
+    text_chunks: list[str] = []
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        text = part.get("text")
+        if isinstance(text, str) and text:
+            text_chunks.append(text)
+    return " ".join(text_chunks)
+
+
+def _extract_agent_reply(data: Any) -> str:
+    if isinstance(data, dict):
+        content = data.get("content")
+        if isinstance(content, dict) and content.get("role") == "model":
+            return _extract_text_from_parts(content.get("parts"))
+        return ""
+
+    if isinstance(data, list):
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content")
+            if isinstance(content, dict) and content.get("role") == "model":
+                reply_text = _extract_text_from_parts(content.get("parts"))
+                if reply_text:
+                    return reply_text
+
+    return ""
+
+
+def _build_upstream_error_detail(prefix: str, response: httpx.Response) -> str:
+    body_text = response.text.strip()
+    if not body_text:
+        return prefix
+    return f"{prefix}: {body_text[:500]}"
+
 
 @router.post(
     "/agent/message",
+    response_model=AgentMessageResponse,
     summary="Send a message to the ADK agent",
 )
 async def send_agent_message(
     body: AgentMessageRequest,
     user: dict[str, Any] = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> AgentMessageResponse:
     """
     Proxy endpoint to send messages to the deployed ADK agent.
     This avoids CORS issues by routing through our backend.
-    Injects project context and corpus_id so the agent knows about its workspace.
+    Injects project context so the agent knows about its workspace.
     """
     user_id = user["uid"]
     project_id = body.project_id
@@ -144,64 +221,75 @@ async def send_agent_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project '{project_id}' not found",
         )
-        
-    context_prefix = f"[System Context: You are operating in Project '{project.name}'."
-    if project.corpus_id:
-        context_prefix += f" Your dedicated Knowledge Base Corpus ID is '{project.corpus_id}'. ALWAYS pass this exact corpus_id to your knowledge base tools (rag_query, add_document_to_corpus)."
-    if project.instructions:
-        context_prefix += f" Project instructions: {project.instructions}"
-    context_prefix += "] \n\n"
 
-    enriched_message = f"{context_prefix}User Message: {message}"
+    enriched_message = (
+        f"{_build_agent_context(project)}User Message: {message}"
+    )
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        # Create or get session
-        session_url = (
-            f"{settings.agent_base_url}/apps/{AGENT_APP_NAME}/users/{user_id}/sessions/{chat_id}"
-        )
-        await client.post(session_url, json={})
+    session_url = (
+        f"{settings.agent_base_url}/apps/{AGENT_APP_NAME}/users/{user_id}/sessions/{chat_id}"
+    )
+    run_url = f"{settings.agent_base_url}/run"
+    payload = {
+        "app_name": AGENT_APP_NAME,
+        "user_id": user_id,
+        "session_id": chat_id,
+        "new_message": {
+            "role": "user",
+            "parts": [{"text": enriched_message}],
+        },
+    }
 
-        # Send message
-        run_url = f"{settings.agent_base_url}/run"
-        payload = {
-            "app_name": AGENT_APP_NAME,
-            "user_id": user_id,
-            "session_id": chat_id,
-            "new_message": {
-                "role": "user",
-                "parts": [{"text": enriched_message}],
-            },
-        }
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            session_response = await client.post(session_url, json={})
+            if session_response.status_code not in {
+                status.HTTP_200_OK,
+                status.HTTP_201_CREATED,
+                status.HTTP_409_CONFLICT,
+            }:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=_build_upstream_error_detail(
+                        "Agent session initialization failed",
+                        session_response,
+                    ),
+                )
 
-        response = await client.post(run_url, json=payload)
-
-        if response.status_code != 200:
+            response = await client.post(run_url, json=payload)
+        if response.status_code != status.HTTP_200_OK:
             raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Agent request failed: {response.text}",
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=_build_upstream_error_detail("Agent request failed", response),
             )
+    except httpx.HTTPError as exc:
+        logger.error("[chat_router] Agent request failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to reach the agent service",
+        ) from exc
 
+    try:
         data = response.json()
+    except ValueError as exc:
+        logger.error("[chat_router] Agent returned invalid JSON: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Agent service returned invalid JSON",
+        ) from exc
 
-        # Extract the model's response text
-        reply_text = ""
-        if isinstance(data, list):
-            for item in data:
-                if item.get("content", {}).get("role") == "model":
-                    parts = item.get("content", {}).get("parts", [])
-                    reply_text = " ".join(p.get("text", "") for p in parts)
-                    break
-        elif isinstance(data, dict):
-            if data.get("content", {}).get("role") == "model":
-                parts = data.get("content", {}).get("parts", [])
-                reply_text = " ".join(p.get("text", "") for p in parts)
+    if not isinstance(data, (dict, list)):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Agent service returned an unexpected response shape",
+        )
 
-        return {
-            "reply": reply_text,
-            "chat_id": chat_id,
-            "title": None,
-            "agent_response": data,
-        }
+    return AgentMessageResponse(
+        reply=_extract_agent_reply(data),
+        chat_id=chat_id,
+        title=None,
+        agent_response=data,
+    )
 
 
 @router.delete(

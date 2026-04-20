@@ -1,7 +1,5 @@
 from enum import Enum
-from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
 
 
 class AppEnv(str, Enum):

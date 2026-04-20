@@ -1,7 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { onUserProjects, addSourceViaApi, createProject } from '../services/projectService';
+import { ExternalLink, FolderPlus, Copy, Check, Calendar, FileText, Plus, X, Search } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const currentUser = { uid: "localUser" };
 
 export default function ArticleCard({ article }) {
   const [copyStatus, setCopyStatus] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [addingToProject, setAddingToProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [projectSearch, setProjectSearch] = useState('');
+
+  useEffect(() => {
+    const unsub = onUserProjects(currentUser.uid, setProjects);
+    return () => unsub();
+  }, []);
 
   if (!article) return null;
 
@@ -15,15 +30,55 @@ export default function ArticleCard({ article }) {
     setTimeout(() => setCopyStatus(null), 2000);
   };
 
+  const handleAddToProject = async (projectId) => {
+    try {
+      setAddingToProject(true);
+      await addSourceViaApi(currentUser.uid, projectId, {
+        type: 'doi',
+        doi: article.doi,
+        title: article.title,
+        authors: article.authors.map(a => typeof a === 'string' ? a : `${a.given} ${a.family}`.trim()),
+        journal: article.journal,
+        date: article.date,
+        url: article.url,
+        pdf_url: article.pdfUrl,
+        document_url: article.pdfUrl
+      });
+      setCopyStatus('added');
+      setShowProjectModal(false);
+      setTimeout(() => setCopyStatus(null), 3000);
+    } catch (err) {
+      console.error('Failed to add source:', err);
+    } finally {
+      setAddingToProject(false);
+    }
+  };
+
+  const handleCreateAndAdd = async () => {
+    if (!newProjectName.trim()) return;
+    try {
+      setAddingToProject(true);
+      const projectId = await createProject(currentUser.uid, { name: newProjectName.trim() });
+      await handleAddToProject(projectId);
+      setNewProjectName('');
+    } catch (err) {
+      console.error('Failed to create and add:', err);
+    } finally {
+      setAddingToProject(false);
+    }
+  };
+
+  const filteredProjects = projects.filter(p => 
+    p.name.toLowerCase().includes(projectSearch.toLowerCase())
+  );
 
   const formatDate = (dateStr) => {
-    // Attempt to format date to "1 June 2025" style
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
       return date.toLocaleDateString('en-GB', {
         day: 'numeric',
-        month: 'long',
+        month: 'short',
         year: 'numeric'
       });
     } catch {
@@ -34,534 +89,593 @@ export default function ArticleCard({ article }) {
   const formattedDate = formatDate(article.date);
 
   return (
-    <div className="article-bento stagger-in">
-      {/* Box 1: Title & Abstract */}
-      <div
-        className={`bento-item main-content-box interactable ${copyStatus === 'title' ? 'copied' : ''}`}
-        onClick={() => copyToClipboard(article.title, 'title')}
-      >
-        <header className="article-header-premium">
-          <div className="meta-row">
+    <div className="article-card-container">
+      <div className="article-main-card">
+        <header className="article-header">
+          <div className="article-meta">
             <span className="type-badge">{article.type.replace('-', ' ')}</span>
-            <span className="dot"></span>
-            <span className={`date-badge ${copyStatus === 'date' ? 'active' : ''}`}>{formattedDate}</span>
-            {article.pdfUrl && (
-              <>
-                <span className="dot"></span>
-                <span className="oa-badge">PDF Available</span>
-              </>
-            )}
+            <span className="date-badge">
+              <Calendar size={12} />
+              {formattedDate}
+            </span>
           </div>
-          <h2 className="article-title-premium">
-            {article.title}
-            {copyStatus === 'title' && <span className="copy-notif">Title Copied</span>}
-          </h2>
+          <h2 className="article-title">{article.title}</h2>
+          
+          <div className="article-authors">
+            {article.authors?.map((author, i) => (
+              <span key={i} className="author-name">
+                {typeof author === 'string' ? author : `${author.given} ${author.family}`}
+                {i < article.authors.length - 1 ? ", " : ""}
+              </span>
+            ))}
+          </div>
         </header>
 
         {cleanAbstract && (
-          <div className="abstract-container">
-            <label className="bento-label">Summary Intelligence</label>
-            <p className="abstract-text-premium">{cleanAbstract}</p>
+          <div className="article-abstract">
+            <p>{cleanAbstract}</p>
           </div>
         )}
-      </div>
 
-      {/* Box 2: Metadata */}
-      <div
-        className={`bento-item meta-box interactable ${copyStatus === 'journal' ? 'copied' : ''}`}
-        onClick={() => copyToClipboard(article.journal, 'journal')}
-      >
-        <label className="bento-label">Journal / Publisher</label>
-        <p className="journal-name-premium">
-          {article.journal}
-          {copyStatus === 'journal' && <span className="copy-notif">Journal Copied</span>}
-        </p>
-      </div>
+        <div className="article-footer">
+          <div className="article-metrics">
+            <div className="metric-pill" onClick={() => copyToClipboard(article.doi, 'doi')}>
+              <span className="metric-label">DOI</span>
+              <span className="metric-value">{article.doi}</span>
+              {copyStatus === 'doi' ? <Check size={12} /> : <Copy size={12} />}
+            </div>
+            {article.journal && (
+              <div className="metric-pill">
+                <span className="metric-label">VENUE</span>
+                <span className="metric-value">{article.journal}</span>
+              </div>
+            )}
+            {article.url?.includes('arxiv.org') && (
+              <div className="metric-pill accent">
+                <span className="metric-label">SOURCE</span>
+                <span className="metric-value">ArXiv</span>
+              </div>
+            )}
+          </div>
 
-      {/* Box 3: DOI Box */}
-      <div
-        className={`bento-item doi-box interactable ${copyStatus === 'doi' ? 'copied' : ''}`}
-        onClick={() => copyToClipboard(article.doi, 'doi')}
-      >
-        <label className="bento-label">Identification (DOI)</label>
-        <div className="doi-badge-premium">
-          <span className="doi-text-premium">{article.doi}</span>
-          <div className={`copy-indicator ${copyStatus === 'doi' ? 'active' : ''}`}>
-            {copyStatus === 'doi' ? '✓' : <CopyIcon />}
+          <div className="article-actions">
+            <a href={article.url} target="_blank" rel="noopener noreferrer" className="action-btn primary">
+              <ExternalLink size={16} />
+              <span>Full Text</span>
+            </a>
+
+            {article.pdfUrl && (
+              <a href={article.pdfUrl} target="_blank" rel="noopener noreferrer" className="action-btn secondary">
+                <FileText size={16} />
+                <span>View PDF</span>
+              </a>
+            )}
+            
+            <div className="project-selector-wrapper">
+              <button 
+                className={`action-btn secondary ${copyStatus === 'added' ? 'success' : ''}`}
+                onClick={() => setShowProjectModal(true)}
+                disabled={addingToProject}
+              >
+                <FolderPlus size={16} />
+                <span>{copyStatus === 'added' ? 'Indexed' : 'Add to Project'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Box 4: Authors / Contributors */}
-      <div className="bento-item authors-box no-grow">
-        <label className="bento-label">Contributors (Click name to copy)</label>
-        <div className="authors-list-premium">
-          {article.authors.length > 0 ? (
-            article.authors.slice(0, 12).map((author, i) => {
-              const fullName = `${author.family}, ${author.given}`;
-              const isCopied = copyStatus === `author-${i}`;
-              return (
-                <div
-                  key={i}
-                  className={`author-pill-premium interactable ${isCopied ? 'copied' : ''}`}
-                  onClick={() => copyToClipboard(fullName, `author-${i}`)}
-                >
-                  <span className="name">{author.family}</span>
-                  <span className="initials">{author.given?.charAt(0)}</span>
-                  {isCopied && <span className="pill-check">✓</span>}
+      <AnimatePresence>
+        {showProjectModal && (
+          <div className="modal-overlay">
+            <motion.div 
+              className="modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProjectModal(false)}
+            />
+            <motion.div 
+              className="project-modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            >
+              <div className="modal-header">
+                <div>
+                  <h3>Select Workspace</h3>
+                  <p>Choose a project to house this research</p>
                 </div>
-              );
-            })
-          ) : (
-            <span className="text-dim">No contributors listed</span>
-          )}
-          {article.authors.length > 12 && (
-            <div className="author-pill-premium more">
-              +{article.authors.length - 12} others
-            </div>
-          )}
-        </div>
-      </div>
+                <button className="close-modal" onClick={() => setShowProjectModal(false)}>
+                  <X size={20} />
+                </button>
+              </div>
 
-      {/* Box 5: Actions */}
-      <div className="bento-item actions-box">
-        <div className={`action-buttons-premium ${article.pdfUrl ? 'has-pdf' : ''}`}>
-          <a href={article.url} target="_blank" rel="noopener noreferrer" className="btn-read-premium">
-            <span>FULL PUBLICATION</span>
-            <ExternalIcon />
-          </a>
-          {article.pdfUrl && (
-            <a href={article.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn-pdf-premium">
-              <PdfIcon />
-              <span>DOWNLOAD PDF</span>
-            </a>
-          )}
-          <button className="btn-icon-premium" onClick={() => copyToClipboard(formattedDate, 'date')}>
-            <span className="mini-label">COPY DATE</span>
-            {copyStatus === 'date' && <span className="mini-check">✓</span>}
-          </button>
-        </div>
-      </div>
+              <div className="modal-body">
+                <div className="create-project-section">
+                  <div className="input-with-action">
+                    <input 
+                      type="text" 
+                      placeholder="Create a new workspace..."
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateAndAdd()}
+                    />
+                    <button 
+                      onClick={handleCreateAndAdd}
+                      disabled={!newProjectName.trim() || addingToProject}
+                    >
+                      <Plus size={16} />
+                      CREATE
+                    </button>
+                  </div>
+                </div>
+
+                <div className="project-search-bar">
+                  <Search size={14} />
+                  <input 
+                    type="text" 
+                    placeholder="Search existing projects..."
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="project-grid">
+                  {filteredProjects.map(p => (
+                    <button 
+                      key={p.id} 
+                      className="project-card-option"
+                      onClick={() => handleAddToProject(p.id)}
+                      disabled={addingToProject}
+                    >
+                      <div className="proj-info">
+                        <span className="proj-name">{p.name}</span>
+                        <span className="proj-sources">{p.sources?.length || 0} sources</span>
+                      </div>
+                      <div className="proj-arrow">
+                        <Plus size={14} />
+                      </div>
+                    </button>
+                  ))}
+                  {filteredProjects.length === 0 && (
+                    <div className="empty-projects">
+                      {projectSearch ? 'No matching projects' : 'No projects found'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <style>{`
-        .interactable {
-          cursor: pointer;
-          position: relative;
-          transition: var(--transition-fast);
+        .article-card-container {
+          width: 100%;
+          max-width: 800px;
+          margin: 0 auto;
         }
 
-        .interactable:hover {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .interactable:active {
-          transform: scale(0.98);
-        }
-
-        .copy-notif {
-          position: absolute;
-          top: 0.75rem;
-          right: 1rem;
-          font-size: 0.6rem;
-          font-weight: 700;
-          color: var(--secondary);
-          background: var(--secondary-glow);
-          padding: 0.2rem 0.5rem;
-          border-radius: var(--radius-sm);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          animation: fadeIn 0.2s ease;
-          border: 1px solid var(--secondary-glow);
-        }
-
-        .copy-notif.bottom {
-          top: auto;
-          bottom: 0.75rem;
-        }
-
-        .article-bento {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          grid-auto-rows: auto;
-          gap: 1px;
-          background: var(--border);
+        .article-main-card {
+          background: #000;
           border: 1px solid var(--border);
-          border-radius: var(--radius-lg);
-          overflow: hidden;
-        }
-
-        .bento-item {
-          background: var(--bg-card);
-          padding: 1.5rem;
+          border-radius: 20px;
+          padding: 2rem;
           display: flex;
           flex-direction: column;
+          gap: 1.5rem;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
         }
 
-        .main-content-box {
-          grid-column: span 4;
-          gap: 1.25rem;
-          border-bottom: 1px solid var(--border);
-        }
-
-        .meta-box { grid-column: span 2; border-right: 1px solid var(--border); }
-        .doi-box { grid-column: span 2; }
-        .authors-box { 
-          grid-column: span 4;
-          border-top: 1px solid var(--border);
-          border-bottom: 1px solid var(--border);
-        }
-        .actions-box { grid-column: span 4; background: var(--bg-surface); }
-
-        .article-header-premium {
+        .article-header {
           display: flex;
           flex-direction: column;
           gap: 1rem;
         }
 
-        .meta-row {
+        .article-meta {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          font-size: 0.65rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          color: var(--text-dim);
-          font-family: var(--font-mono);
+          gap: 1rem;
         }
 
         .type-badge {
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
           color: var(--secondary);
           background: var(--secondary-glow);
-          border: 1px solid var(--secondary-glow);
-          padding: 0.15rem 0.5rem;
-          border-radius: var(--radius-sm);
+          padding: 0.3rem 0.7rem;
+          border-radius: 6px;
         }
 
-        .dot {
-          width: 3px;
-          height: 3px;
-          border-radius: 50%;
-          background: var(--text-dim);
-          opacity: 0.5;
-        }
-
-        .article-title-premium {
-          font-family: var(--font-heading);
-          font-size: 1.5rem;
-          font-weight: 700;
-          line-height: 1.3;
-          letter-spacing: -0.02em;
-          margin: 0;
-          color: var(--text-main);
-        }
-
-        .bento-label {
-          display: block;
-          font-size: 0.6rem;
-          font-weight: 700;
-          color: var(--text-dim);
-          text-transform: uppercase;
-          letter-spacing: 0.15em;
-          margin-bottom: 1rem;
-          font-family: var(--font-mono);
-        }
-
-        .abstract-text-premium {
-          font-size: 0.95rem;
-          line-height: 1.6;
-          color: var(--text-muted);
-          margin: 0;
-          display: -webkit-box;
-          -webkit-line-clamp: 4;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .journal-name-premium {
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--text-main);
-          margin: 0;
-        }
-
-        .doi-badge-premium {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-        }
-
-        .doi-text-premium {
-          font-family: var(--font-mono);
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .copy-indicator {
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--text-dim);
-        }
-
-        .copy-indicator.active {
-          color: var(--secondary);
-        }
-
-        .authors-list-premium {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .author-pill-premium {
+        .date-badge {
           display: flex;
           align-items: center;
           gap: 0.4rem;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid var(--border);
-          padding: 0.3rem 0.6rem;
-          border-radius: var(--radius-sm);
-          font-size: 0.75rem;
+          font-size: 0.8rem;
+          color: var(--text-dim);
+        }
+
+        .article-title {
+          font-size: 1.6rem;
+          font-weight: 700;
+          line-height: 1.3;
+          color: var(--text-main);
+          letter-spacing: -0.02em;
+        }
+
+        .article-abstract {
+          font-size: 0.95rem;
+          line-height: 1.7;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.02);
+          padding: 1.5rem;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .article-authors {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+          margin-top: 0.5rem;
+        }
+
+        .author-name {
+          font-size: 0.9rem;
           font-weight: 500;
-        }
-
-        .author-pill-premium .initials {
-          opacity: 0.5;
-          font-family: var(--font-mono);
-          font-weight: 400;
-        }
-
-        .author-pill-premium.copied {
-          border-color: var(--secondary);
           color: var(--secondary);
-          background: var(--secondary-glow);
-          box-shadow: 0 0 10px var(--secondary-glow);
+          opacity: 0.9;
         }
 
-        .pill-check {
-          font-size: 0.7rem;
-          margin-left: 0.2rem;
+        .article-footer {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid var(--border);
         }
 
-        .action-buttons-premium {
-          display: grid;
-          grid-template-columns: 1fr auto;
+        .article-metrics {
+          display: flex;
+          flex-wrap: wrap;
           gap: 1rem;
         }
 
-        .btn-read-premium {
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-text);
-          text-decoration: none;
-          padding: 0.75rem 1.25rem;
-          border-radius: var(--radius-md);
-          font-weight: 700;
-          font-size: 0.75rem;
+        .metric-pill {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          letter-spacing: 0.05em;
-          box-shadow: 0 4px 12px var(--secondary-glow);
-        }
-
-        .btn-icon-premium {
-          background: transparent;
+          gap: 0.75rem;
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          padding: 0.75rem 1rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: var(--text-muted);
-          transition: var(--transition-fast);
+          padding: 0.5rem 1rem;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
         }
 
-        .btn-icon-premium:hover {
-          border-color: var(--border-bright);
+        .metric-pill:hover {
+          border-color: var(--secondary);
+          background: var(--secondary-glow);
+        }
+
+        .metric-label {
+          font-family: var(--font-mono);
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: var(--text-dim);
+        }
+
+        .metric-value {
+          font-size: 0.85rem;
+          font-weight: 600;
           color: var(--text-main);
         }
 
-        .mini-label {
-          font-size: 0.65rem;
-          font-weight: 700;
-          letter-spacing: 0.05em;
+        .article-actions {
+          display: flex;
+          gap: 1rem;
         }
 
-        .mini-check {
-          color: var(--secondary);
-          font-size: 0.75rem;
-        }
-
-        .action-buttons-premium {
-          display: grid;
-          grid-template-columns: 1fr 50px;
-          gap: 0.75rem;
-        }
-
-        .action-buttons-premium.has-pdf {
-          grid-template-columns: 1fr 1fr 50px;
-        }
-
-        .oa-badge {
-          color: #34d399;
-          border: 1px solid rgba(52, 211, 153, 0.25);
-          padding: 0.15rem 0.5rem;
-          border-radius: var(--radius-sm);
-          font-size: 0.6rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          background: rgba(52, 211, 153, 0.08);
-        }
-
-        .btn-pdf-premium {
-          background: rgba(52, 211, 153, 0.08);
-          border: 1px solid rgba(52, 211, 153, 0.2);
-          color: #34d399;
-          text-decoration: none;
-          padding: 1rem;
-          border-radius: 12px;
-          font-weight: 700;
-          font-size: 0.85rem;
+        .action-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
-          transition: var(--transition-base);
-          letter-spacing: 0.03em;
-        }
-
-        .btn-pdf-premium:hover {
-          background: rgba(52, 211, 153, 0.15);
-          border-color: rgba(52, 211, 153, 0.4);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 20px rgba(52, 211, 153, 0.1);
-        }
-
-        .btn-read-premium {
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-text);
-          text-decoration: none;
-          padding: 1rem;
+          gap: 0.6rem;
+          padding: 0.85rem 1.5rem;
           border-radius: 12px;
-          font-weight: 700;
-          font-size: 0.95rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          transition: var(--transition-base);
-          box-shadow: 0 4px 15px var(--secondary-glow);
+          font-size: 0.9rem;
+          font-weight: 600;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          text-decoration: none;
         }
 
-        .btn-read-premium:hover {
+        .action-btn.primary {
+          background: var(--secondary);
+          color: #fff;
+        }
+
+        .action-btn.secondary {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border);
+          color: var(--text-main);
+        }
+
+        .action-btn.secondary.success {
+          background: var(--accent-glow);
+          color: var(--accent);
+          border-color: var(--accent);
+        }
+
+        .action-btn:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 25px var(--secondary-glow);
           filter: brightness(1.1);
         }
 
-        .btn-icon-premium {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid var(--border);
-          border-radius: 12px;
+        .project-selector-wrapper {
+          position: relative;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 1000;
+          padding: 2rem;
+        }
+
+        .modal-backdrop {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(12px);
+        }
+
+        .project-modal {
+          position: relative;
+          width: 100%;
+          max-width: 480px;
+          background: #000;
+          border: 1px solid var(--border);
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+          animation: modal-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modal-enter {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+          padding: 1.75rem 2rem;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+        }
+
+        .modal-header h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
           color: var(--text-main);
-          transition: var(--transition-base);
+          margin-bottom: 0.25rem;
         }
 
-        .btn-icon-premium:hover {
-          background: rgba(255,255,255,0.08);
-          border-color: var(--border-bright);
+        .modal-header p {
+          font-size: 0.8rem;
+          color: var(--text-dim);
         }
 
-        @media (max-width: 600px) {
-          .article-bento {
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            overflow: visible;
-          }
+        .close-modal {
+          background: transparent;
+          border: none;
+          color: var(--text-dim);
+          cursor: pointer;
+          padding: 0.5rem;
+          border-radius: 50%;
+          transition: all 0.2s;
+        }
 
-          .bento-item {
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1rem 0.95rem;
-          }
+        .close-modal:hover {
+          background: rgba(255,255,255,0.05);
+          color: #fff;
+        }
 
-          .main-content-box, .meta-box, .doi-box, .authors-box, .actions-box {
-            grid-column: span 1;
-            border: none;
-          }
+        .modal-body {
+          padding: 1.5rem 2rem 2.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
 
-          .article-title-premium {
-            font-size: 1.2rem;
-            line-height: 1.35;
-          }
+        .create-project-section {
+          width: 100%;
+        }
 
-          .meta-row {
-            flex-wrap: wrap;
-            row-gap: 0.35rem;
-          }
+        .input-with-action {
+          display: flex;
+          gap: 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border);
+          padding: 0.5rem;
+          border-radius: 14px;
+          transition: all 0.3s;
+        }
 
-          .bento-label {
-            margin-bottom: 0.65rem;
-          }
+        .input-with-action:focus-within {
+          border-color: var(--secondary);
+          background: rgba(255, 255, 255, 0.08);
+          box-shadow: 0 0 20px var(--secondary-glow);
+        }
 
-          .doi-badge-premium {
-            align-items: flex-start;
-          }
+        .input-with-action input {
+          flex: 1;
+          background: transparent;
+          border: none;
+          color: #fff;
+          font-size: 0.9rem;
+          padding: 0 0.75rem;
+          outline: none;
+        }
 
-          .doi-text-premium {
-            white-space: normal;
-            overflow-wrap: anywhere;
-            line-height: 1.4;
-          }
+        .input-with-action button {
+          background: var(--secondary);
+          color: #fff;
+          border: none;
+          padding: 0.6rem 1rem;
+          border-radius: 10px;
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
 
-          .action-buttons-premium,
-          .action-buttons-premium.has-pdf {
-            grid-template-columns: 1fr;
-            gap: 0.6rem;
-          }
+        .input-with-action button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
 
-          .btn-read-premium,
-          .btn-pdf-premium {
-            padding: 0.8rem;
-            font-size: 0.8rem;
-          }
+        .project-search-bar {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0 0.75rem;
+          height: 40px;
+          border-bottom: 1px solid var(--border);
+          color: var(--text-dim);
+        }
 
-          .btn-icon-premium {
-            min-height: 42px;
+        .project-search-bar input {
+          flex: 1;
+          height: 100%;
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+          outline: none;
+        }
+
+        .project-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          max-height: 280px;
+          overflow-y: auto;
+          padding-right: 0.5rem;
+        }
+
+        .project-grid::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .project-grid::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.1);
+          border-radius: 10px;
+        }
+
+        .project-card-option {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 1.25rem 1.5rem;
+          border-radius: 16px;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .project-card-option:hover {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: var(--secondary);
+          transform: translateX(5px);
+        }
+
+        .proj-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .proj-name {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--text-main);
+        }
+
+        .proj-sources {
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          color: var(--text-dim);
+          text-transform: uppercase;
+        }
+
+        .proj-arrow {
+          color: var(--text-dim);
+          opacity: 0;
+          transition: all 0.2s;
+          transform: rotate(-90deg);
+        }
+
+        .project-card-option:hover .proj-arrow {
+          opacity: 1;
+          color: var(--secondary);
+          transform: rotate(0deg);
+        }
+
+        .empty-projects {
+          padding: 2rem;
+          text-align: center;
+          font-size: 0.85rem;
+          color: var(--text-dim);
+          font-style: italic;
+        }
+          cursor: pointer;
+          font-size: 0.85rem;
+          transition: background 0.2s ease;
+        }
+
+        .project-option:hover {
+          background: var(--secondary-glow);
+          color: var(--secondary);
+        }
+
+        @media (max-width: 640px) {
+          .article-main-card {
+            padding: 1.5rem;
+          }
+          .article-title {
+            font-size: 1.3rem;
+          }
+          .article-actions {
+            flex-direction: column;
+          }
+          .project-selector-wrapper, .action-btn {
+            width: 100%;
           }
         }
       `}</style>
     </div>
   );
 }
-
-const CopyIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-);
-
-const ExternalIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-);
-
-const PdfIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-);
-
-const ShareIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-);

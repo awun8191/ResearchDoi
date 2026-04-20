@@ -220,20 +220,32 @@ def _score_pdf_link(href: str, text: str) -> int:
     score = 0
 
     # href structure signals — most reliable
-    if h.endswith(".pdf"):                                  score += 10
-    if "/pdf/" in h or h.endswith("/pdf"):                  score += 9
-    if re.search(r"[?&]format=pdf", h):                     score += 8
-    if re.search(r"[?&]type=pdf", h):                       score += 7
-    if re.search(r"[?&](download|dl)=pdf", h):              score += 7
-    if "fullpdf" in h or "full-pdf" in h:                   score += 6
-    if "/epdf" in h or "/epdf/" in h:                       score += 5
-    if re.search(r"/articlepdf/|/article/pdf", h):          score += 8
-    if "download" in h and "pdf" in h:                      score += 5
+    if h.endswith(".pdf"):
+        score += 10
+    if "/pdf/" in h or h.endswith("/pdf"):
+        score += 9
+    if re.search(r"[?&]format=pdf", h):
+        score += 8
+    if re.search(r"[?&]type=pdf", h):
+        score += 7
+    if re.search(r"[?&](download|dl)=pdf", h):
+        score += 7
+    if "fullpdf" in h or "full-pdf" in h:
+        score += 6
+    if "/epdf" in h or "/epdf/" in h:
+        score += 5
+    if re.search(r"/articlepdf/|/article/pdf", h):
+        score += 8
+    if "download" in h and "pdf" in h:
+        score += 5
 
     # anchor text signals — supplement, don't rely on alone
-    if re.search(r"\bpdf\b", t):                            score += 2
-    if re.search(r"download\s+pdf|pdf\s+download", t):      score += 3
-    if re.search(r"full.?text\s+pdf|pdf\s+full.?text", t):  score += 3
+    if re.search(r"\bpdf\b", t):
+        score += 2
+    if re.search(r"download\s+pdf|pdf\s+download", t):
+        score += 3
+    if re.search(r"full.?text\s+pdf|pdf\s+full.?text", t):
+        score += 3
 
     return score
 

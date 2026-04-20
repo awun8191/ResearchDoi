@@ -324,29 +324,10 @@ async def _execute_rag_search(
 ) -> str:
     """
     Called when Gemini invokes the search_knowledge_base function.
-    First tries Vertex AI RAG if configured, then falls back to in-process vector store.
+    Searches the in-process vector store scoped to the active chat session.
     """
-    from .rag import (
-        rag_service,
-        use_vertex_ai_rag,
-    )  # avoid circular import at module level
+    from .rag import rag_service  # avoid circular import at module level
 
-    # Try Vertex AI RAG first if configured
-    if use_vertex_ai_rag():
-        try:
-            vertex_results = await rag_service.search_vertex_ai(query=query, top_k=3)
-            if vertex_results:
-                formatted = []
-                for r in vertex_results:
-                    title = r.metadata.get("title", "Knowledge Base")
-                    formatted.append(f"[Source: {title}]\n{r.text}")
-                return "\n\n---\n\n".join(formatted)
-        except Exception as e:
-            logger.warning(
-                f"[gemini] Vertex AI RAG search failed, falling back to in-memory: {e}"
-            )
-
-    # Fall back to in-process vector store
     results = await rag_service.search(
         uid=uid, project_id=project_id, chat_id=chat_id, query=query, top_k=3
     )
