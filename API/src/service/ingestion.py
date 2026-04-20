@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from typing import Any
@@ -101,22 +102,25 @@ async def ingest_pdf(uid: str, project_id: str, doi: str, pdf_bytes: bytes, base
     base_metadata = base_metadata or {}
     base_metadata["doi"] = doi
     
-    total_chunks_stored = 0
-    
     # Step 6 & 7: Embed and Store
+    tasks = []
     for sec in sections:
         # We augment the metadata with the section name
         sec_metadata = base_metadata.copy()
         sec_metadata["section"] = sec["section"]
         
         # Ingest this specific section. The RAG service will chunk it further if needed.
-        response = await rag_service.ingest(
-            uid=uid,
-            project_id=project_id,
-            text=sec["text"],
-            metadata=sec_metadata
+        tasks.append(
+            rag_service.ingest(
+                uid=uid,
+                project_id=project_id,
+                text=sec["text"],
+                metadata=sec_metadata
+            )
         )
-        total_chunks_stored += response.chunks_stored
+
+    responses = await asyncio.gather(*tasks)
+    total_chunks_stored = sum(r.chunks_stored for r in responses)
 
     logger.info(f"[ingestion] Successfully ingested {total_chunks_stored} chunks for doi={doi}")
     return total_chunks_stored
