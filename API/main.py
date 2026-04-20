@@ -14,9 +14,9 @@ from src.routers import doi as doi_router
 from src.routers import pdf as pdf_router
 from src.routers import chat as chat_router
 from src.routers import rag as rag_router
-from src.routers import rag_corpus as rag_corpus_router
 from src.routers import storage as storage_router
 from src.routers import projects as projects_router
+from src.routers import history as history_router
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -84,9 +84,9 @@ app.include_router(doi_router.router, prefix="/api/doi", tags=["DOI"])
 app.include_router(pdf_router.router, prefix="/api/pdf", tags=["PDF"])
 app.include_router(chat_router.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(rag_router.router, prefix="/api/rag", tags=["RAG"])
-app.include_router(rag_corpus_router.router, prefix="/api/rag", tags=["RAG Corpus"])
 app.include_router(storage_router.router, prefix="/api/storage", tags=["Storage"])
 app.include_router(projects_router.router, prefix="/api/projects", tags=["Projects"])
+app.include_router(history_router.router, prefix="/api/history", tags=["History"])
 
 
 @app.get("/health", tags=["Health"])

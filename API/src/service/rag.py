@@ -2,8 +2,7 @@
 Server-side RAG service.
 
 Architecture:
-  - Primary: Vertex AI RAG (managed service)
-  - Fallback: In-process vector store (dict keyed by "{uid}:{project_id}")
+  - In-process vector store (dict keyed by "{uid}:{project_id}:{chat_id}")
   - Embeddings generated via Gemini Embedding API (gemini-embedding-001)
   - Cosine similarity computed with numpy for speed
   - Chunk cap: MAX_CHUNKS_PER_DOC (100) — prevents runaway API quota
@@ -19,15 +18,13 @@ Chunking strategy:
 
 import asyncio
 import logging
-import os
 import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import numpy as np
-from vertexai import rag
 
 from src.core.config import settings
 from src.models.rag import IngestResponse, SearchResult
@@ -41,26 +38,6 @@ MAX_CHUNKS_PER_DOC = 100
 
 EMBEDDING_MODEL = "gemini-embedding-2-preview"
 EMBEDDING_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent"
-
-# Vertex AI RAG Configuration
-VERTEX_AI_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "researchassistant-3446d")
-VERTEX_AI_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-VERTEX_AI_CORPUS_ID = os.getenv("VERTEX_AI_RAG_CORPUS_ID", "")
-
-# Initialize Vertex AI
-try:
-    import vertexai
-    vertexai.init(project=VERTEX_AI_PROJECT, location=VERTEX_AI_LOCATION)
-    logger.info(
-        f"Vertex AI RAG initialized with project={VERTEX_AI_PROJECT}, location={VERTEX_AI_LOCATION}"
-    )
-except Exception as e:
-    logger.warning(f"Failed to initialize Vertex AI RAG: {e}")
-
-
-def use_vertex_ai_rag() -> bool:
-    """Check if Vertex AI RAG is configured and should be used."""
-    return bool(VERTEX_AI_CORPUS_ID)
 
 
 @dataclass
@@ -273,74 +250,6 @@ class RagService:
         ]
         scored.sort(key=lambda r: r.score, reverse=True)
         return scored[:top_k]
-
-    async def search_vertex_ai(
-        self,
-        query: str,
-        top_k: int = 3,
-    ) -> list[SearchResult]:
-        """
-        Search using Vertex AI RAG when configured.
-        Falls back to in-memory search if Vertex AI RAG is not configured.
-        """
-        if not use_vertex_ai_rag():
-            logger.info("[rag] Vertex AI RAG not configured, using in-memory store")
-            return []
-
-        try:
-            rag_resource = rag.RagResource(
-                rag_corpus=f"projects/{VERTEX_AI_PROJECT}/locations/{VERTEX_AI_LOCATION}/ragCorpora/{VERTEX_AI_CORPUS_ID}"
-            )
-
-            response = rag.retrieval_query(
-                rag_resources=[rag_resource],
-                query=query,
-                similarity_top_k=top_k,
-            )
-
-            results = []
-            if response and response.results:
-                for i, result in enumerate(response.results):
-                    results.append(
-                        SearchResult(
-                            id=f"vertex_rag_{i}",
-                            text=result.text,
-                            score=1.0 - (result.distance or 0)
-                            if hasattr(result, "distance")
-                            else 0.9,
-                            metadata={
-                                "source": "vertex_ai_rag",
-                                "corpus_id": VERTEX_AI_CORPUS_ID,
-                            },
-                        )
-                    )
-
-            logger.info(f"[rag] Vertex AI RAG returned {len(results)} results")
-            return results
-
-        except Exception as e:
-            logger.error(f"[rag] Vertex AI RAG search failed: {e}")
-            return []
-
-    async def ingest_vertex_ai(
-        self,
-        text: str,
-        metadata: dict[str, Any] | None = None,
-        display_name: Optional[str] = None,
-    ) -> int:
-        """
-        Ingest text into Vertex AI RAG corpus.
-        Note: This requires a GCS URI, not raw text.
-        For raw text, we use the in-memory store.
-        """
-        if not use_vertex_ai_rag():
-            logger.info("[rag] Vertex AI RAG not configured")
-            return 0
-
-        logger.info(
-            "[rag] Vertex AI RAG ingestion requires GCS URI, use in-memory store for text"
-        )
-        return 0
 
     def clear(self, uid: str, project_id: str, chat_id: str = "default") -> None:
         key = self._store_key(uid, project_id, chat_id)

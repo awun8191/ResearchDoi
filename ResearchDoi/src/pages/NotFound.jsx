@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 export default function NotFound() {
-  const { currentUser } = useAuth();
-  const primaryHref = currentUser ? '/projects' : '/login';
+  const currentUser = { uid: "localUser" };
+  const primaryHref = currentUser ? '/projects' : '/';
 
   return (
     <section className="nf-wrap">

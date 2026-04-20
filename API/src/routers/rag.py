@@ -2,7 +2,6 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from fastapi.responses import JSONResponse
 
 from src.core.dependencies import get_current_user
 from src.models.rag import IngestRequest, IngestResponse, SearchRequest, SearchResult

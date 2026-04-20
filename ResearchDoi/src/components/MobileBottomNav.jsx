@@ -1,25 +1,25 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Search, Library, User } from 'lucide-react';
+import { Search, Clock, FolderOpen, User } from 'lucide-react';
 
 export default function MobileBottomNav() {
   const navItems = [
-    { icon: <Search size={22} />, id: 'home', path: '/', label: 'Search' },
-    { icon: <Library size={22} />, id: 'projects', path: '/projects', label: 'Library' },
-    { icon: <User size={22} />, id: 'profile', path: '/profile', label: 'Profile' },
+    { icon: <Search size={22} />, path: '/', label: 'Search' },
+    { icon: <Clock size={22} />, path: '/history', label: 'History' },
+    { icon: <FolderOpen size={22} />, path: '/projects', label: 'Projects' },
+    { icon: <User size={22} />, path: '/profile', label: 'Profile' },
   ];
 
   return (
-    <nav className="mobile-nav glass">
+    <nav className="mobile-nav">
       <div className="bottom-nav-content">
         {navItems.map((item) => (
           <NavLink
-            key={item.id}
+            key={item.path}
             to={item.path}
             className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
           >
-            <div className="icon-wrapper">{item.icon}</div>
-            <span className="nav-label">{item.label}</span>
+            {item.icon}
           </NavLink>
         ))}
       </div>
@@ -27,20 +27,21 @@ export default function MobileBottomNav() {
       <style>{`
         .mobile-nav {
           position: fixed;
-          top: 10px;
-          left: 0.75rem;
-          right: 0.75rem;
-          width: auto;
-          max-width: none;
-          height: 64px;
+          bottom: 1.5rem;
+          left: 50%;
+          transform: translateX(-50%);
+          width: calc(100% - 3rem);
+          max-width: 320px;
+          height: 60px;
           z-index: 2000;
-          border-radius: var(--radius-xl);
+          border-radius: 20px;
           display: none;
           align-items: center;
           padding: 0 0.5rem;
-          background: var(--bg-sidebar);
-          border: 1px solid var(--secondary-glow);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+          background: rgba(10, 10, 10, 0.8);
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
         @media (max-width: 768px) {
@@ -58,40 +59,18 @@ export default function MobileBottomNav() {
 
         .bottom-nav-item {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 4px;
-          text-decoration: none;
-          color: var(--text-sidebar);
+          justify-content: center;
+          color: var(--text-dim);
           transition: var(--transition-base);
-          padding: 0.5rem 1rem;
-          border-radius: var(--radius-lg);
-          min-width: 70px;
-          opacity: 0.75;
-        }
-
-        .bottom-nav-item:hover {
-          opacity: 1;
-          background: rgba(255, 255, 255, 0.08);
+          padding: 0.75rem;
+          border-radius: 14px;
+          text-decoration: none;
         }
 
         .bottom-nav-item.active {
-          color: var(--text-sidebar);
+          color: var(--secondary);
           background: var(--secondary-glow);
-          opacity: 1;
-        }
-
-        .icon-wrapper {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .nav-label {
-          font-size: 0.65rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
         }
       `}</style>
     </nav>

@@ -29,7 +29,7 @@ export default function Logo({
             )}
             {isIcon ? (
                 <g>
-                    <rect x="60" y="0" width="80" height="80" rx="16" fill="none" stroke={useGradient ? "url(#logo-gradient)" : "currentColor"} strokeWidth="10" />
+                    <rect x="60" y="0" width="80" height="80" rx="16" fill="none" stroke={useGradient ? "url(#logo-gradient)" : primaryColor} strokeWidth="10" />
                     <text
                         x="100"
                         y="45"
@@ -38,7 +38,7 @@ export default function Logo({
                         fontFamily="var(--font-heading)"
                         fontWeight="900"
                         fontSize="54"
-                        fill={useGradient ? "url(#logo-gradient)" : "currentColor"}
+                        fill={useGradient ? "url(#logo-gradient)" : primaryColor}
                     >
                         R
                     </text>
@@ -50,12 +50,9 @@ export default function Logo({
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontFamily="var(--font-heading)"
-                    fontWeight="900"
+                    fontWeight="800"
                     fontSize="68"
-                    fill={useGradient ? "url(#logo-gradient)" : "currentColor"}
-                    stroke={useGradient ? "url(#logo-gradient)" : "currentColor"}
-                    strokeWidth="8"
-                    strokeLinejoin="round"
+                    fill={useGradient ? "url(#logo-gradient)" : primaryColor}
                     letterSpacing="-0.04em"
                 >
                     RAST

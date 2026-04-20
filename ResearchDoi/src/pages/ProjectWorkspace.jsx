@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { onProject, updateProject, addSourceViaApi, addSourceFileViaApi, removeSource } from '../services/projectService';
-import { fetchArticle } from '../services/crossref';
+import { fetchArticle } from '../services/arxiv';
 import { useChat } from '../hooks/useChat';
 import {
   ArrowLeft,
@@ -30,9 +29,10 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
+const currentUser = { uid: "localUser" };
+
 export default function ProjectWorkspace() {
   const { projectId } = useParams();
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   const [project, setProject] = useState(null);
@@ -243,9 +243,6 @@ export default function ProjectWorkspace() {
           inCodeBlock = false;
         } else {
           inCodeBlock = true;
-          // Use _ prefix to signal intentionally unused high-level variable if that's the case
-          // or just don't assign it if it's truly not needed. 
-          // However, we'll keep it as 'codeBlockLang' to fix the lint by actually using it or naming it '_codeBlockLang'.
           _codeBlockLang = line.slice(3).trim();
         }
         continue;
@@ -376,7 +373,8 @@ export default function ProjectWorkspace() {
   if (loading) {
     return (
       <div className="ws-loading">
-        <Loader2 size={32} className="spin" />
+        <CircularProgress size={32} sx={{ color: 'var(--secondary)' }} />
+        <p>SYNCHRONIZING WORKSPACE...</p>
         <style>{styles}</style>
       </div>
     );
@@ -385,10 +383,10 @@ export default function ProjectWorkspace() {
   if (notFound) {
     return (
       <div className="ws-not-found">
-        <h2>Project not found</h2>
-        <p>This project may have been deleted.</p>
+        <h2>WORKSPACE NOT FOUND</h2>
+        <p>This analytical sector has been terminated or moved.</p>
         <button className="ws-back-btn" onClick={() => navigate('/projects')}>
-          <ArrowLeft size={16} /> Back to Projects
+          <ArrowLeft size={16} /> BACK TO REGISTRY
         </button>
         <style>{styles}</style>
       </div>
@@ -411,142 +409,113 @@ export default function ProjectWorkspace() {
       />
 
       {/* Workspace Sidebar */}
-      <aside className={`ws-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+      <aside className={`ws-sidebar glass ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="ws-sidebar-header">
           <div className="ws-project-title-row">
             <div className="folder-icon-wrapper">
-              <PanelLeft size={16} />
+              <Database size={16} />
             </div>
             <h2 className="ws-project-name">{project.name}</h2>
-            <button className="ws-project-menu">
-              <MoreHorizontal size={16} />
-            </button>
           </div>
-          <button className="ws-sidebar-toggle" onClick={() => setMobileSidebarOpen(false)}>
-            <span style={{ fontSize: '10px' }}>[|]</span>
-          </button>
         </div>
 
         <div className="ws-sidebar-content">
           {/* Instructions Section */}
-          <div className="ws-card-btn" onClick={startEditingInstructions}>
+          <div className="ws-card-btn glass" onClick={startEditingInstructions}>
             <div className="ws-card-icon">
-              <Settings2 size={16} />
+              <Plus size={16} />
             </div>
             <div className="ws-card-text">
-              <span className="ws-card-title">Instructions</span>
+              <span className="ws-card-title">INSTRUCTIONS</span>
               <p className="ws-card-subtitle">
                 {editingInstructions
-                  ? "Editing instructions..."
-                  : (project.instructions || "You are my final year thesis research assistant. Your aim is to help me analyze and build my project...")}
+                  ? "UPDATING..."
+                  : (project.instructions || "Click to add project parameters.")}
               </p>
             </div>
           </div>
 
           {editingInstructions && (
-            <div className="instructions-edit">
+            <div className="instructions-edit glass">
               <textarea
                 className="instructions-textarea"
                 value={instructionsDraft}
                 onChange={(e) => setInstructionsDraft(e.target.value)}
-                placeholder="Add project instructions or research focus..."
+                placeholder="DEFINE SECTOR PARAMETERS..."
                 rows={4}
                 autoFocus
               />
               <div className="instructions-actions">
-                <button className="btn-icon-sm" onClick={() => setEditingInstructions(false)}>
-                  <X size={14} />
-                </button>
-                <button className="btn-icon-sm accent" onClick={handleSaveInstructions}>
-                  <Check size={14} />
-                </button>
+                <button className="btn-lab-sm" onClick={() => setEditingInstructions(false)}>ABORT</button>
+                <button className="btn-lab-sm primary" onClick={handleSaveInstructions}>APPLY</button>
               </div>
             </div>
           )}
 
           {/* Sources Section */}
-          <div className="ws-card-btn" onClick={() => { setShowDoiInput(!showDoiInput); setSourceError(''); }}>
+          <div className={`ws-card-btn glass ${showDoiInput ? 'active' : ''}`} onClick={() => { setShowDoiInput(!showDoiInput); setSourceError(''); }}>
             <div className="ws-card-icon">
               <Database size={16} />
             </div>
             <div className="ws-card-text">
-              <span className="ws-card-title">Sources</span>
-              <p className="ws-card-subtitle">Custom knowledge base for this project</p>
+              <span className="ws-card-title">SOURCES</span>
+              <p className="ws-card-subtitle">{project.sources?.length || 0} REFERENCES</p>
             </div>
           </div>
 
           {showDoiInput && (
-            <div className="sources-expanded">
+            <div className="sources-expanded glass">
               <div className="source-type-toggle">
-                <button 
-                  className={`source-type-btn ${sourceType === 'doi' ? 'active' : ''}`}
-                  onClick={() => setSourceType('doi')}
-                >
-                  DOI
-                </button>
-                <button 
-                  className={`source-type-btn ${sourceType === 'url' ? 'active' : ''}`}
-                  onClick={() => setSourceType('url')}
-                >
-                  URL
-                </button>
-                <button 
-                  className={`source-type-btn ${sourceType === 'file' ? 'active' : ''}`}
-                  onClick={() => setSourceType('file')}
-                >
-                  File
-                </button>
+                <button className={`type-opt ${sourceType === 'doi' ? 'active' : ''}`} onClick={() => setSourceType('doi')}>DOI</button>
+                <button className={`type-opt ${sourceType === 'url' ? 'active' : ''}`} onClick={() => setSourceType('url')}>URL</button>
+                <button className={`type-opt ${sourceType === 'file' ? 'active' : ''}`} onClick={() => setSourceType('file')}>FILE</button>
               </div>
               <form className="doi-add-form" onSubmit={handleAddSource}>
-                <div className="doi-input-row" style={sourceType === 'file' ? { padding: '0.5rem' } : {}}>
+                <div className="doi-input-row">
                   {sourceType === 'file' ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                      <label className="file-upload-label" style={{ flexShrink: 0, cursor: 'pointer', background: 'rgba(255,255,255,0.05)', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
-                        Choose File
-                        <input
-                          type="file"
-                          style={{ display: 'none' }}
-                          onChange={(e) => { setSourceFile(e.target.files[0]); setSourceError(''); }}
-                        />
+                    <div className="file-input-box">
+                      <label className="file-label">
+                        <span>SELECT ARCHIVE</span>
+                        <input type="file" style={{ display: 'none' }} onChange={(e) => { setSourceFile(e.target.files[0]); setSourceError(''); }} />
                       </label>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {sourceFile ? sourceFile.name : 'No file selected'}
-                      </span>
+                      <span className="file-name-hint">{sourceFile ? sourceFile.name : 'NO FILE'}</span>
                     </div>
                   ) : (
-                    <>
-                      <Search size={14} className="doi-input-icon" />
-                      <input
-                        type="text"
-                        className="doi-input"
-                        placeholder={sourceType === 'doi' ? "Enter DOI..." : "Enter Website URL..."}
-                        value={sourceValue}
-                        onChange={(e) => { setSourceValue(e.target.value); setSourceError(''); }}
-                        autoFocus
-                      />
-                    </>
+                    <input
+                      type="text"
+                      className="lab-source-input"
+                      placeholder={sourceType === 'doi' ? "DOI IDENTIFIER..." : "URL..."}
+                      value={sourceValue}
+                      onChange={(e) => { setSourceValue(e.target.value); setSourceError(''); }}
+                      autoFocus
+                    />
                   )}
-                  <button type="submit" className="doi-submit" disabled={fetching || (sourceType === 'file' ? !sourceFile : !sourceValue.trim())}>
+                  <button type="submit" className="lab-source-submit" disabled={fetching || (sourceType === 'file' ? !sourceFile : !sourceValue.trim())}>
                     {fetching ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
                   </button>
                 </div>
                 {sourceError && <p className="doi-error">{sourceError}</p>}
-                {fetching && sourceType === 'file' && <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>Uploading and processing file...</p>}
               </form>
               <div className="sources-list">
                 {project.sources?.map((source, i) => (
-                  <div key={source.doi || source.url || i} className="source-item">
-                    <div className="source-info">
-                      <div className="source-text">
-                        <p className="source-title" title={source.title}>{source.title}</p>
-                        <p className="source-meta">
-                          {source.type === 'url' ? 'Website Source' : source.type === 'file' ? 'Uploaded File' : (source.authors || 'Unknown Author')}
-                        </p>
-                      </div>
+                  <div key={source.doi || source.url || i} className="source-item glass">
+                    <div className="source-text">
+                      <p className="source-title">{source.title}</p>
+                      <p className="source-meta">{source.type.toUpperCase()}</p>
                     </div>
                     <div className="source-actions">
-                      <button className="btn-icon-xs danger" onClick={() => handleRemoveSource(source)}>
-                        <Trash2 size={12} />
+                      {source.pdf_url && (
+                        <button className="source-action-btn" onClick={() => window.open(source.pdf_url, '_blank')}>
+                          <FileText size={12} />
+                        </button>
+                      )}
+                      {source.url && (
+                        <button className="source-action-btn" onClick={() => window.open(source.url, '_blank')}>
+                          <ExternalLink size={12} />
+                        </button>
+                      )}
+                      <button className="source-del" onClick={() => handleRemoveSource(source)}>
+                        <X size={12} />
                       </button>
                     </div>
                   </div>
@@ -555,119 +524,64 @@ export default function ProjectWorkspace() {
             </div>
           )}
 
-          <div className="ws-personal-files row-link">
-            <div className="row-left">
-              <Paperclip size={14} className="doc-icon" />
-              <span>Personal files</span>
-            </div>
-            <div className="row-right">
-              <span>{project.sources?.length || 0} &gt;</span>
-            </div>
-          </div>
-
           <div className="ws-conversations-section">
             <div className="ws-conversations-header">
-              <span>Conversations</span>
-              <button className="conv-new-btn" onClick={startNewConversation} title="New conversation">
-                <Plus size={12} />
+              <span>ACTIVE STREAMS</span>
+              <button className="conv-new-btn" onClick={startNewConversation}>
+                <Plus size={14} />
               </button>
             </div>
-            {chatSessions.length === 0 ? (
-              <div className="ws-conversation-item">
-                <span className="conv-title" style={{ color: 'var(--text-dim)' }}>No conversations yet</span>
-              </div>
-            ) : (
-              chatSessions.map((session) => (
-                <div key={session.chat_id} className={`ws-conversation-row ${activeChatId === session.chat_id ? 'active' : ''}`}>
-                  <button
-                    className="ws-conversation-item"
-                    onClick={() => switchConversation(session.chat_id, session.title)}
-                  >
-                    <span className="conv-title" title={session.title || 'Untitled Chat'}>
-                      {session.title || 'Untitled Chat'}
-                    </span>
-                    <span className="conv-date">
-                      {session.updated_at
-                        ? new Date(session.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                        : 'Recent'}
-                    </span>
-                  </button>
-                  <button
-                    className="conv-delete-btn"
-                    title="Delete conversation"
-                    onClick={() => handleDeleteConversation(session.chat_id)}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))
-            )}
+            <div className="chat-streams">
+              {chatSessions.length === 0 ? (
+                <div className="no-streams">NO DATA STREAMS</div>
+              ) : (
+                chatSessions.map((session) => (
+                  <div key={session.chat_id} className={`stream-row glass ${activeChatId === session.chat_id ? 'active' : ''}`}>
+                    <button className="stream-btn" onClick={() => switchConversation(session.chat_id, session.title)}>
+                      <span className="stream-title">{session.title || 'UNTITLED STREAM'}</span>
+                    </button>
+                    <button className="stream-del" onClick={() => handleDeleteConversation(session.chat_id)}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Chat Area */}
       <main className="ws-main">
-        {/* Messages Area */}
         <div className="chat-messages">
           {messages.length === 0 ? (
-            <div className="chat-empty-state">
-              <h2>Start a conversation in this project</h2>
-              <p>Use this project to keep your conversations and files in a single place.</p>
+            <div className="chat-empty-lab stagger-in">
+              <div className="lab-pulse-large"></div>
+              <h2>INITIALIZE ANALYTICAL STREAM</h2>
+              <p>WORKSPACE: {project.name}</p>
               <div className="chat-suggestions">
-                <button
-                  className="chat-suggestion-chip"
-                  onClick={() => {
-                    setInputValue('Ask a question');
-                    inputRef.current?.focus();
-                  }}
-                >
-                  Ask a question
-                </button>
-                <button
-                  className="chat-suggestion-chip"
-                  onClick={() => {
-                    setInputValue('Get help with a task');
-                    inputRef.current?.focus();
-                  }}
-                >
-                  Get help with a task
-                </button>
+                <button className="lab-suggest-chip glass" onClick={() => { setInputValue('Analyze indexed sources'); handleSend(); }}>ANALYZE INDEXED SOURCES</button>
+                <button className="lab-suggest-chip glass" onClick={() => { setInputValue('Identify core themes'); handleSend(); }}>IDENTIFY CORE THEMES</button>
               </div>
             </div>
           ) : (
             <div className="chat-messages-inner">
               {messages.map((msg, idx) => (
-                <div
-                  key={msg.id}
-                  className={`chat-message ${msg.role === 'user' ? 'chat-message-user' : 'chat-message-ai'} ${msg.error ? 'chat-message-error' : ''}`}
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                >
-                  <div className="chat-msg-avatar">
-                    {msg.role === 'user' ? (
-                      <User size={18} />
-                    ) : (
-                      <Bot size={18} />
-                    )}
+                <div key={msg.id} className={`lab-msg ${msg.role === 'user' ? 'user' : 'ai'}`}>
+                  <div className="msg-avatar glass">
+                    {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                   </div>
-                  <div className="chat-msg-content">
-                    <span className="chat-msg-sender">
-                      {msg.role === 'user' ? 'Scientist' : 'Rast AI'}
-                    </span>
-                    <div className="chat-msg-text-container">
+                  <div className="msg-content">
+                    <header className="msg-header">
+                      <span className="msg-sender">{msg.role === 'user' ? 'SCIENTIST' : 'RAST AI'}</span>
+                      <div className="msg-line"></div>
+                    </header>
+                    <div className="msg-text-box">
                       {msg.loading ? (
-                        <div className="chat-loading-indicator">
-                          <span className="dot"></span>
-                          <span className="dot"></span>
-                          <span className="dot"></span>
-                        </div>
+                        <div className="lab-loader-dots"><span></span><span></span><span></span></div>
                       ) : (
-                        <div className="chat-msg-text">
-                          {msg.role === 'user' ? (
-                            <p className="chat-p">{msg.text}</p>
-                          ) : (
-                            renderMessageText(msg.text)
-                          )}
+                        <div className="msg-rendered">
+                          {msg.role === 'user' ? <p>{msg.text}</p> : renderMessageText(msg.text)}
                         </div>
                       )}
                     </div>
@@ -679,35 +593,24 @@ export default function ProjectWorkspace() {
           )}
         </div>
 
-        {/* Chat Input */}
-        <div className="chat-bottom-wrapper">
-          <form className="chat-input-form" onSubmit={handleSend}>
-            <div className="chat-input-container">
-              <button type="button" className="input-icon-btn"><Paperclip size={18} /></button>
-              <textarea
-                ref={inputRef}
-                className="chat-input"
-                placeholder="Ask anything"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={sending}
-              />
-              <div className="input-actions-right">
-                <button type="button" className="input-icon-btn"><Mic size={18} /></button>
-                <button
-                  type="submit"
-                  className="chat-send-btn"
-                  disabled={sending || !inputValue.trim()}
-                >
-                  {sending ? (
-                    <Loader2 size={16} className="spin" />
-                  ) : (
-                    <ArrowUp size={16} />
-                  )}
-                </button>
-              </div>
+        <div className="chat-input-zone">
+          <form className="lab-input-form glass" onSubmit={handleSend}>
+            <button type="button" className="lab-input-tool"><Paperclip size={20} /></button>
+            <textarea
+              ref={inputRef}
+              className="lab-textarea-main"
+              placeholder="INITIALIZE QUERY..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={sending}
+            />
+            <div className="input-ops-right">
+              <button type="button" className="lab-input-tool"><Mic size={20} /></button>
+              <button type="submit" className="lab-send-trigger" disabled={sending || !inputValue.trim()}>
+                {sending ? <Loader2 size={18} className="spin" /> : <ArrowUp size={20} />}
+              </button>
             </div>
           </form>
         </div>
@@ -719,1089 +622,397 @@ export default function ProjectWorkspace() {
 }
 
 const styles = `
-  .ws-loading,
-  .ws-not-found {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    gap: 1.5rem;
-    color: var(--text-dim);
-    background: var(--bg-primary);
-  }
-
-  .ws-not-found h2 {
-    color: var(--text-main);
-    font-size: 2rem;
-    font-weight: 700;
-  }
-
-  .ws-back-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: var(--transition-fast);
-  }
-
-  .ws-back-btn:hover {
-    background: rgba(255,255,255,0.08);
-    color: white;
-    border-color: var(--border-bright);
-    transform: translateY(-1px);
-  }
-
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  /* Container */
   .ws-container {
     display: flex;
     height: 100vh;
+    width: 100%;
+    gap: 1rem;
     overflow: hidden;
-    background: var(--bg-primary);
   }
 
-  /* Sidebar */
   .ws-sidebar {
-    width: 340px;
-    min-width: 340px;
-    margin: 20px 0 20px 40px;
-    height: calc(100vh - 40px);
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--secondary-glow);
-    background: color-mix(in srgb, var(--bg-sidebar) 40%, var(--bg-surface) 60%);
-    backdrop-filter: blur(20px);
-    box-shadow: var(--shadow-xl);
+    width: 320px;
+    min-width: 320px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    padding: 1.5rem;
-    position: relative;
+    background: #000;
+    border-right: 1px solid var(--border);
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
     z-index: 10;
-    transition: var(--transition-base);
-  }
-
-  .ws-sidebar:hover {
-    border-color: var(--secondary);
-    box-shadow: 0 0 40px var(--secondary-glow);
   }
 
   .ws-sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-  }
-  
-  .ws-project-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .folder-icon-wrapper {
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
+    padding-bottom: 1rem;
   }
 
   .ws-project-name {
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--text-main);
   }
 
-  .ws-project-menu {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: 0.2rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .ws-project-menu:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
-  }
-
-  .ws-sidebar-toggle {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-  }
-
   .ws-sidebar-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 1.5rem;
+    overflow-y: auto;
   }
 
   .ws-card-btn {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem;
+    gap: 1rem;
+    padding: 1.25rem;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.3s ease;
   }
 
   .ws-card-btn:hover {
-    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--secondary);
+    background: var(--secondary-glow);
   }
 
   .ws-card-icon {
-    color: var(--text-dim);
-    margin-top: 0.1rem;
-  }
-
-  .ws-card-text {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-body);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
     display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary);
   }
 
   .ws-card-title {
-    font-size: 0.9rem;
-    color: var(--text-main);
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
   }
 
   .ws-card-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-dim);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
     line-height: 1.4;
   }
-  
+
   .sources-expanded {
-    padding-left: 2.25rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .source-type-toggle {
+    display: flex;
+    background: var(--bg-body);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+  }
+
+  .type-opt {
+    flex: 1;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 800;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .type-opt.active {
+    background: var(--secondary);
+    color: #fff;
+  }
+
+  .doi-input-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .lab-source-input {
+    flex: 1;
+    background: var(--bg-body);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    color: var(--text-main);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    outline: none;
+  }
+
+  .lab-source-submit {
+    width: 38px;
+    height: 38px;
+    background: var(--secondary);
+    color: #fff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .source-item {
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     margin-bottom: 0.5rem;
   }
 
-  .row-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
+  .source-title {
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--text-main);
-    cursor: pointer;
-    border-radius: var(--radius-md);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .row-link:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
-  
-  .row-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .row-right {
+  .source-meta {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
     color: var(--text-dim);
-    font-size: 0.8rem;
+    margin-top: 0.25rem;
   }
 
-  /* Conversations Section */
   .ws-conversations-section {
-    margin-top: 1.5rem;
+    margin-top: 2rem;
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 1.5rem;
   }
 
   .ws-conversations-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 800;
     color: var(--text-dim);
-    font-weight: 600;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.2em;
+    padding: 0 0.5rem;
   }
 
-  .conv-new-btn {
-    width: 20px;
-    height: 20px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-dim);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-
-  .conv-new-btn:hover {
-    color: var(--text-main);
-    border-color: var(--border-bright);
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .ws-conversation-item {
-    width: 100%;
-    border: none;
-    background: transparent;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-  }
-
-  .ws-conversation-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .ws-conversation-row {
+  .stream-row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    border-radius: var(--radius-md);
+    padding: 0.5rem;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
   }
 
-  .ws-conversation-row.active .ws-conversation-item {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--secondary-glow);
-  }
-
-  .conv-delete-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-dim);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-  }
-
-  .conv-delete-btn:hover {
-    color: #f87171;
-    border-color: #f87171;
-    background: rgba(248, 113, 113, 0.08);
-  }
-
-  .conv-title {
-    font-size: 0.85rem;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .conv-date {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    margin-top: 0.2rem;
-  }
-
-  /* Instructions editing */
-  .instructions-edit {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .instructions-textarea {
-    width: 100%;
-    padding: 0.85rem;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-main);
-    font-size: 0.9rem;
-    font-family: var(--font-body);
-    resize: vertical;
-    outline: none;
-    transition: var(--transition-fast);
-  }
-
-  .instructions-textarea:focus {
-    border-color: var(--border-bright);
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
-  }
-
-  .instructions-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-  }
-
-  .btn-icon-sm {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: var(--transition-fast);
-  }
-
-  .source-type-toggle {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 0.25rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-  }
-
-  .source-type-btn {
-    flex: 1;
-    padding: 0.4rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: var(--transition-fast);
-  }
-
-  .source-type-btn.active {
-    background: var(--secondary);
-    color: white;
-    box-shadow: 0 0 10px var(--secondary-glow);
-  }
-
-  .btn-icon-sm:hover {
-    color: white;
-    background: rgba(255,255,255,0.1);
-    border-color: var(--border-bright);
-  }
-
-  .btn-icon-sm.accent {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.2);
-    color: var(--secondary);
-  }
-
-  .btn-icon-sm.accent:hover {
-    background: rgba(59, 130, 246, 0.2);
+  .stream-row.active {
+    background: var(--secondary-glow);
     border-color: var(--secondary);
   }
 
-  /* DOI Add Form */
-  .doi-add-form {
-    margin-bottom: 1rem;
-    animation: slideDown 0.3s ease-out;
-  }
-
-  .doi-input-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 0 0.75rem;
-    transition: var(--transition-fast);
-  }
-
-  .doi-input-row:focus-within {
-    border-color: var(--border-bright);
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
-  }
-
-  .doi-input-icon {
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
-
-  .doi-input {
+  .stream-btn {
     flex: 1;
-    padding: 0.85rem 0;
+    text-align: left;
     background: transparent;
     border: none;
-    color: var(--text-main);
-    font-size: 0.9rem;
-    outline: none;
-  }
-
-  .doi-submit {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    color: black;
+    padding: 0.5rem;
     cursor: pointer;
-    flex-shrink: 0;
-    transition: var(--transition-fast);
-    border: none;
-  }
-
-  .doi-submit:hover:not(:disabled) {
-    transform: scale(1.05);
-  }
-
-  .doi-submit:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  .doi-error {
-    font-size: 0.8rem;
-    color: #fb7185;
-    margin-top: 0.5rem;
-    padding-left: 0.5rem;
-  }
-
-  /* Sources List */
-  .sources-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .sources-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-  }
-
-  /* Custom scrollbar for sidebar */
-  .ws-sidebar .sources-list::-webkit-scrollbar {
-    width: 4px;
-  }
-  .ws-sidebar .sources-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .ws-sidebar .sources-list::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-  }
-
-  .ws-empty-text {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    padding: 1rem 0.5rem;
-    text-align: center;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-md);
-  }
-
-  .source-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-    border-radius: var(--radius-lg);
-    background: rgba(255,255,255,0.02);
-    border: 1px solid var(--border);
-    transition: var(--transition-fast);
-    position: relative;
     overflow: hidden;
   }
 
-  .source-item:hover {
-    background: rgba(255,255,255,0.04);
-    border-color: var(--border-bright);
-    transform: translateX(4px);
-  }
-
-  .source-icon-wrapper {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-dim);
-    flex-shrink: 0;
-    transition: var(--transition-fast);
-  }
-
-  .source-icon-wrapper.has-pdf {
-    background: rgba(248, 113, 113, 0.05);
-    border-color: rgba(248, 113, 113, 0.1);
-    color: #fca5a5;
-  }
-
-  .source-item:hover .source-icon-wrapper {
-    border-color: var(--border-bright);
-    color: white;
-  }
-
-  .source-item:hover .source-icon-wrapper.has-pdf {
-    border-color: rgba(248, 113, 113, 0.3);
-    color: #fca5a5;
-  }
-
-  .source-info {
-    display: flex;
-    gap: 0.85rem;
-    flex: 1;
-    min-width: 0;
-    align-items: center;
-  }
-
-  .source-text {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .source-icon {
-    color: var(--text-dim);
-    flex-shrink: 0;
-    opacity: 0.6;
-  }
-
-  .source-icon.has-pdf {
-    color: #fca5a5;
-    opacity: 1;
-  }
-
-  .source-title {
+  .stream-title {
+    display: block;
     font-size: 0.85rem;
     font-weight: 600;
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     color: var(--text-main);
-  }
-
-  .source-meta {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    margin-top: 0.15rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .source-actions {
-    display: flex;
-    gap: 0.4rem;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: var(--transition-fast);
-    transform: translateX(10px);
-  }
-
-  .source-item:hover .source-actions {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .btn-icon-xs {
-    width: 28px;
-    height: 28px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    cursor: pointer;
-    text-decoration: none;
-    transition: var(--transition-fast);
-  }
-
-  .btn-icon-xs:hover {
-    color: white;
-    background: rgba(255,255,255,0.1);
-    border-color: var(--border-bright);
-  }
-
-  .btn-icon-xs.pdf-link {
-    color: #fca5a5;
-    background: rgba(248, 113, 113, 0.05);
-    border-color: rgba(248, 113, 113, 0.1);
-  }
-
-  .btn-icon-xs.pdf-link:hover {
-    background: rgba(248, 113, 113, 0.1);
-    border-color: rgba(248, 113, 113, 0.3);
-  }
-
-  .btn-icon-xs.danger:hover {
-    color: #fb7185;
-    background: rgba(244, 63, 94, 0.1);
-    border-color: rgba(244, 63, 94, 0.2);
-  }
-
-  /* ========= CHAT ========= */
   .ws-main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
-    background: var(--bg-primary);
+    background: #000;
+    overflow: hidden;
     position: relative;
   }
 
   .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    scroll-behavior: smooth;
+    padding: 3rem;
   }
 
-  .chat-empty-state {
-    flex: 1;
+  .chat-empty-lab {
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    max-width: 500px;
-    margin: auto;
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  .chat-empty-state h2 {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-bottom: 0.75rem;
-    letter-spacing: -0.02em;
-    color: var(--text-main);
-  }
-
-  .chat-empty-state p {
-    color: var(--text-muted);
-    font-size: 1rem;
-    line-height: 1.6;
-    margin-bottom: 2rem;
-  }
-
-  .chat-suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    justify-content: center;
-  }
-
-  .chat-suggestion-chip {
-    padding: 0.6rem 1.25rem;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-full);
-    color: var(--text-dim);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: var(--transition-fast);
-  }
-
-  .chat-suggestion-chip:hover {
-    background: rgba(255,255,255,0.08);
-    color: white;
-    border-color: var(--border-bright);
-  }
-
-  .chat-messages-inner {
-    max-width: 800px;
-    width: 100%;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
     gap: 2rem;
   }
 
-  .chat-message {
-    display: flex;
-    gap: 1.25rem;
-    opacity: 0;
-    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  .lab-pulse-large {
+    width: 20px;
+    height: 20px;
+    background: var(--secondary);
+    border-radius: 50%;
+    box-shadow: 0 0 30px var(--secondary);
+    animation: pulse-glow 2s infinite;
   }
 
-  .chat-msg-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+  .chat-empty-lab h2 {
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    letter-spacing: 0.4em;
+    color: var(--text-main);
+  }
+
+  .lab-msg {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    max-width: 900px;
+  }
+
+  .lab-msg.user {
+    margin-left: auto;
+    flex-direction: row-reverse;
+  }
+
+  .msg-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin-top: 4px;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-dim);
+    color: var(--secondary);
   }
 
-  .chat-message-user .chat-msg-avatar {
-    background: transparent;
-    border: 1px solid var(--border);
-  }
-
-  .chat-message-ai .chat-msg-avatar {
-    background: var(--text-main);
-    color: var(--bg-body);
-  }
-
-  .chat-msg-content {
+  .msg-content {
     flex: 1;
-    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-    padding-top: 0.25rem;
+    gap: 1rem;
   }
 
-  .chat-msg-sender {
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--text-main);
-  }
-
-  .chat-msg-text-container {
-    color: var(--text-main);
-    font-size: 0.95rem;
-    line-height: 1.6;
-  }
-
-  .chat-loading-indicator {
-    display: flex;
-    gap: 6px;
-    padding: 0.5rem 0;
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    background: var(--text-dim);
-    border-radius: 50%;
-    animation: pulse 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
-  }
-
-  .dot:nth-child(2) { animation-delay: 0.2s; }
-  .dot:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 0.4; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.2); }
-  }
-
-  /* Chat Markdown Rendering */
-  .chat-msg-text {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .chat-p {
-    margin-bottom: 0.75rem;
-  }
-
-  .chat-p:last-child {
-    margin-bottom: 0;
-  }
-
-  .chat-bottom-wrapper {
-    padding: 0 2rem 2rem 2rem;
-    display: flex;
-    justify-content: center;
-    background: linear-gradient(to top, var(--bg-primary) 50%, transparent 100%);
-    position: sticky;
-    bottom: 0;
-  }
-
-  .chat-input-form {
-    max-width: 800px;
-    width: 100%;
-    background: var(--bg-surface);
-    border: 2px solid var(--secondary-glow);
-    border-radius: 24px;
-    padding: 0.75rem 1.25rem;
-    box-shadow: 0 8px 32px var(--secondary-glow);
-    transition: var(--transition-base);
-  }
-
-  .chat-input-form:focus-within {
-    border-color: var(--secondary);
-    box-shadow: 0 12px 40px var(--secondary-glow);
-    transform: translateY(-2px);
-  }
-
-  .chat-input-container {
+  .msg-header {
     display: flex;
     align-items: center;
     gap: 1rem;
   }
 
-  .input-icon-btn {
-    background: transparent;
-    border: none;
-    color: var(--secondary);
-    cursor: pointer;
-    padding: 0.6rem;
+  .msg-sender {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+  }
+
+  .msg-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    opacity: 0.5;
+  }
+
+  .msg-text-box {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-main);
+  }
+
+  .chat-input-zone {
+    padding: 2rem 3rem 3rem;
+  }
+
+  .lab-input-form {
     display: flex;
     align-items: center;
-    border-radius: 12px;
-    transition: var(--transition-fast);
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.4);
   }
 
-  .input-icon-btn:hover {
-    color: var(--text-main);
-    background: var(--secondary-glow);
-  }
-
-  .chat-input {
+  .lab-textarea-main {
     flex: 1;
     background: transparent;
     border: none;
     color: var(--text-main);
-    font-size: 1.15rem;
-    font-weight: 500;
     font-family: var(--font-body);
-    resize: none;
+    font-size: 1.1rem;
     outline: none;
-    max-height: 200px;
-    min-height: 28px;
+    resize: none;
     padding: 0.5rem 0;
-    line-height: 1.6;
   }
 
-  .chat-input::placeholder {
-    color: var(--text-dim);
-    font-weight: 400;
-  }
-
-  .input-actions-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .chat-send-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+  .lab-send-trigger {
+    width: 48px;
+    height: 48px;
+    background: var(--secondary);
+    color: #fff;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--btn-primary-bg);
-    color: var(--btn-primary-text);
     cursor: pointer;
-    border: none;
-    transition: var(--transition-base);
-    box-shadow: 0 4px 15px var(--secondary-glow);
+    transition: all 0.3s ease;
   }
 
-  .chat-send-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .chat-send-btn:hover:not(:disabled) {
+  .lab-send-trigger:hover:not(:disabled) {
+    box-shadow: 0 0 25px var(--secondary);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px var(--secondary-glow);
-    opacity: 1;
   }
 
-  .chat-send-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-    background: var(--text-dim);
-  }
-
-  /* Mobile Tweaks */
   @media (max-width: 1024px) {
-    .ws-sidebar {
-      width: 280px;
-      min-width: 280px;
-    }
+    .ws-container { flex-direction: column; padding: 1rem; }
+    .ws-sidebar { width: 100%; min-width: 0; }
   }
 
-  @media (max-width: 768px) {
-    .ws-container {
-      position: relative;
-    }
-
-    .ws-sidebar {
-      position: fixed;
-      left: 0;
-      top: calc(var(--appbar-height) + 20px);
-      width: 280px;
-      margin: 0;
-      height: calc(100vh - var(--appbar-height) - 20px);
-      border-radius: 0;
-      border-top-right-radius: var(--radius-xl);
-      border-bottom-right-radius: var(--radius-xl);
-      z-index: 1999;
-      transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 20px 0 50px rgba(0,0,0,0.5);
-      background: var(--bg-surface);
-      border: none;
-      border-right: 1px solid var(--border);
-    }
-
-    .ws-sidebar.mobile-open {
-      transform: translateX(0);
-    }
-
-    .ws-main {
-      width: 100%;
-      height: calc(100vh - var(--navbar-height));
-    }
-
-    .chat-messages {
-      padding: 1rem;
-    }
-
-    .chat-bottom-wrapper {
-      padding: 1rem;
-      padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    }
-
-    .chat-empty-state h2 {
-      font-size: 1.4rem;
-    }
-
-    .chat-input-form {
-      padding: 0.85rem 1rem;
-      border-radius: 20px;
-    }
-
-    .chat-input-container {
-      gap: 0.75rem;
-    }
-
-    .chat-input {
-      font-size: 1rem;
-      padding: 0.6rem 0;
-    }
-
-    .input-icon-btn {
-      padding: 0.5rem;
-    }
-
-    .input-icon-btn svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .chat-send-btn {
-      width: 42px;
-      height: 42px;
-      min-width: 42px;
-      border-radius: 14px;
-    }
-
-    .chat-send-btn svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .chat-message {
-      gap: 0.85rem;
-    }
-
-    .chat-msg-avatar {
-      width: 28px;
-      height: 28px;
-    }
-
-    .chat-msg-content {
-      gap: 0.25rem;
-    }
-
-    .chat-msg-sender {
-      font-size: 0.8rem;
-    }
-
-    .chat-msg-text-container {
-      font-size: 0.9rem;
-    }
-
-    .chat-suggestions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .chat-suggestion-chip {
-      width: 100%;
-      text-align: center;
-    }
-
-    .ws-sidebar-overlay {
-      position: fixed;
-      top: calc(var(--appbar-height) + 20px);
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.4);
-      backdrop-filter: blur(4px);
-      z-index: 1998;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    }
-
-    .ws-sidebar-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .ws-mobile-toggle-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      background: var(--primary-glow);
-      color: var(--text-main);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-    }
-
-    .ws-mobile-toggle-floating {
-      position: fixed;
-      top: max(22px, env(safe-area-inset-top));
-      right: max(1rem, env(safe-area-inset-right));
-      z-index: 2101;
-    }
+  .source-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
   }
 
-  @media (min-width: 769px) {
-    .ws-mobile-toggle-btn {
-      display: none;
-    }
+  .source-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .source-action-btn:hover {
+    color: var(--secondary);
+    transform: scale(1.1);
   }
 `;

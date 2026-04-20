@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import Depends, Header, HTTPException, Security, status
+from fastapi import Header, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
 from src.core.config import settings
