@@ -219,12 +219,6 @@ autonomous_thesis_agent.name = "autonomous_thesis_generator"
 deep_research_agent.name = "autonomous_deep_research"
 url_analyst.name = "url_analyst"
 
-# Set input schemas so TransferToAgentTool can extract arguments from the user's prompt
-thesis_writing_agent.input_schema = WritingSectionRequest
-autonomous_thesis_agent.input_schema = ThesisFullPipelineRequest
-deep_research_agent.input_schema = DeepResearchRequest
-url_analyst.input_schema = UrlAnalysisRequest
-
 thesis_writing_agent.description = "Write a single thesis section based on project documents. Requires 'research_topic' and 'target_section'."
 autonomous_thesis_agent.description = "Generate a full 5-chapter thesis with automated research and citations. Requires 'research_topic'."
 deep_research_agent.description = (

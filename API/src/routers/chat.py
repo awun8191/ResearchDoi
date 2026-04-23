@@ -168,7 +168,28 @@ def _extract_text_from_parts(parts: Any) -> str:
     return " ".join(text_chunks)
 
 
+
+def _extract_tool_calls(data: Any) -> list[dict[str, Any]]:
+    tool_calls = []
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict) and item.get("type") == "tool_call":
+                tc = item.get("tool_call", {})
+                if tc:
+                    tool_calls.append({
+                        "name": tc.get("name", "unknown_tool"),
+                        "args": tc.get("arguments", {})
+                    })
+            # Also handle ADK event format if different
+            if isinstance(item, dict) and "tool_name" in item:
+                tool_calls.append({
+                    "name": item.get("tool_name"),
+                    "args": item.get("tool_args", {})
+                })
+    return tool_calls
+
 def _extract_agent_reply(data: Any) -> str:
+
     if isinstance(data, dict):
         content = data.get("content")
         if isinstance(content, dict) and content.get("role") == "model":
@@ -284,12 +305,17 @@ async def send_agent_message(
             detail="Agent service returned an unexpected response shape",
         )
 
+
     return AgentMessageResponse(
         reply=_extract_agent_reply(data),
         chat_id=chat_id,
         title=None,
-        agent_response=data,
+        agent_response={
+            "raw": data,
+            "tool_calls": _extract_tool_calls(data)
+        },
     )
+
 
 
 @router.delete(
