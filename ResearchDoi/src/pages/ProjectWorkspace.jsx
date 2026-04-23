@@ -584,6 +584,24 @@ export default function ProjectWorkspace() {
                           {msg.role === 'user' ? <p>{msg.text}</p> : renderMessageText(msg.text)}
                         </div>
                       )}
+                      {msg.tool_calls && msg.tool_calls.length > 0 && (
+                        <div className="msg-tool-calls" style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '5px', fontSize: '0.85em', fontFamily: 'monospace' }}>
+                          <div style={{ color: 'var(--accent-color)', marginBottom: '5px' }}>
+                            <Code size={12} style={{ marginRight: '5px', verticalAlign: 'middle' }} />
+                            Tool Executions
+                          </div>
+                          {msg.tool_calls.map((tc, tcIdx) => (
+                            <div key={tcIdx} style={{ marginLeft: '10px', marginBottom: '5px' }}>
+                              <span style={{ color: '#aaa' }}>$&gt;</span> <span style={{ color: '#fff' }}>{tc.name}</span>
+                              {tc.args && Object.keys(tc.args).length > 0 && (
+                                <pre style={{ margin: '2px 0 0 15px', color: '#888', whiteSpace: 'pre-wrap', fontSize: '0.9em' }}>
+                                  {JSON.stringify(tc.args, null, 2)}
+                                </pre>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

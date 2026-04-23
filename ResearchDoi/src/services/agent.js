@@ -48,11 +48,14 @@ export async function sendMessage(userId, projectId, chatId, message, onChunk) {
             onChunk(data.reply);
         }
         
+
         return {
             reply: data.reply || '',
             chatId: data.chat_id || chatId,
             title: data.title,
+            tool_calls: data.agent_response && data.agent_response.tool_calls ? data.agent_response.tool_calls : [],
         };
+
     } catch (err) {
         console.error('Agent sendMessage error:', err);
         throw err;

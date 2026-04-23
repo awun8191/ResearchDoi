@@ -123,7 +123,7 @@ export function useChat(userId, projectId, systemPrompt = '') {
     try {
       let fullResponse = '';
       
-      await agentSendMessage(
+      const response = await agentSendMessage(
         userId,
         projectId || 'default',
         activeChatId,
@@ -138,6 +138,14 @@ export function useChat(userId, projectId, systemPrompt = '') {
             )
           );
         }
+      );
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiPlaceholderId
+            ? { ...msg, text: fullResponse || response.reply, loading: false, tool_calls: response.tool_calls }
+            : msg
+        )
       );
 
       const nextTitle = chatTitle || text.slice(0, 80).trim();
