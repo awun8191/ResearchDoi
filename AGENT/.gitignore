@@ -1,4 +1,11 @@
-# Python-generated files
+# Secrets — NEVER commit these
+.env
+.env.yaml
+*.log
+session.db
+.adk/
+
+# Python
 __pycache__/
 *.py[oc]
 build/

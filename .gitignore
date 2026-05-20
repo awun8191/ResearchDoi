@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.yaml
+*.log
+
+# Session databases
+session.db
+.adk/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,4 +1,10 @@
-# Python-generated files
+# Secrets — NEVER commit these
+.env
+.env.yaml
+*.log
+session.db
+
+# Python
 __pycache__/
 *.py[oc]
 build/
@@ -9,6 +15,5 @@ wheels/
 # Virtual environments
 .venv
 
-# Secrets — NEVER commit these
-.env
+# Service account
 service-account.json
