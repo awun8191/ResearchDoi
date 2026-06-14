@@ -17,7 +17,7 @@ from src.models.chat import (
 )
 from src.models.project import ProjectResponse
 from src.core.config import settings
-from src.service import gemini as gemini_service
+from src.service import gemini as chat_service
 from src.service import projects as project_service
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ async def list_sessions(
     project_id: str,
     user: dict[str, Any] = Depends(get_current_user),
 ) -> ChatSessionsResponse:
-    sessions = await gemini_service.list_chat_sessions(
+    sessions = await chat_service.list_chat_sessions(
         uid=user["uid"], project_id=project_id
     )
     return ChatSessionsResponse(
@@ -54,7 +54,7 @@ async def delete_session(
     chat_id: str,
     user: dict[str, Any] = Depends(get_current_user),
 ) -> None:
-    await gemini_service.delete_chat_session(
+    await chat_service.delete_chat_session(
         uid=user["uid"],
         project_id=project_id,
         chat_id=chat_id,
@@ -74,7 +74,7 @@ async def get_session(
     """
     Retrieves the ordered chat history from Firestore for a given project/chat thread.
     """
-    history = await gemini_service.get_history_firestore(
+    history = await chat_service.get_history_firestore(
         uid=user["uid"],
         project_id=project_id,
         chat_id=chat_id,
@@ -111,7 +111,7 @@ async def send_message(
     - `system_prompt` overrides the default assistant prompt (use project.instructions).
     """
     try:
-        reply = await gemini_service.send_message(
+        reply = await chat_service.send_message(
             uid=user["uid"],
             project_id=body.project_id,
             chat_id=body.chat_id,
@@ -120,10 +120,10 @@ async def send_message(
             system_prompt=body.system_prompt,
         )
     except Exception as exc:
-        logger.error("[chat_router] Gemini call failed: %s", exc)
+        logger.error("[chat_router] OpenRouter call failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to get response from Gemini: {str(exc)}",
+            detail=f"Failed to get response from model: {str(exc)}",
         )
 
     return ChatMessageResponse(
@@ -169,22 +169,36 @@ def _extract_text_from_parts(parts: Any) -> str:
 
 
 def _extract_agent_reply(data: Any) -> str:
+    """
+    Extract the model's text reply from the ADK agent response.
+    Handles multiple ADK response schemas with logging for unmatched formats.
+    """
+    # Schema 1: Direct content dict format
     if isinstance(data, dict):
         content = data.get("content")
         if isinstance(content, dict) and content.get("role") == "model":
             return _extract_text_from_parts(content.get("parts"))
+        # Schema 2: Wrapped response { "response": { "content": ... } }
+        inner = data.get("response") or data.get("message")
+        if isinstance(inner, dict):
+            inner_content = inner.get("content")
+            if isinstance(inner_content, dict) and inner_content.get("role") == "model":
+                return _extract_text_from_parts(inner_content.get("parts"))
         return ""
 
+    # Schema 3: List of turn/event objects
     if isinstance(data, list):
         for item in data:
             if not isinstance(item, dict):
                 continue
+            # Try direct content
             content = item.get("content")
             if isinstance(content, dict) and content.get("role") == "model":
                 reply_text = _extract_text_from_parts(content.get("parts"))
                 if reply_text:
                     return reply_text
 
+    logger.warning("[chat_router] No recognized agent response schema in: %s", type(data).__name__)
     return ""
 
 
@@ -305,7 +319,7 @@ async def clear_session(
     Deletes all messages in `users/{uid}/projects/{project_id}/documents/{chat_id}/chat_history`.
     This is irreversible.
     """
-    await gemini_service.clear_history(
+    await chat_service.clear_history(
         uid=user["uid"],
         project_id=body.project_id,
         chat_id=body.chat_id,

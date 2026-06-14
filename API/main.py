@@ -17,6 +17,7 @@ from src.routers import rag as rag_router
 from src.routers import storage as storage_router
 from src.routers import projects as projects_router
 from src.routers import history as history_router
+from src.routers import paper_chat as paper_chat_router
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -65,7 +66,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ResearchDoi API",
-    description="Backend service for DOI lookup, PDF resolution, RAG, and Gemini chat.",
+    description="Backend service for DOI lookup, PDF resolution, RAG, and AI chat (OpenRouter/Gemma 4 31B).",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -87,6 +88,7 @@ app.include_router(rag_router.router, prefix="/api/rag", tags=["RAG"])
 app.include_router(storage_router.router, prefix="/api/storage", tags=["Storage"])
 app.include_router(projects_router.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(history_router.router, prefix="/api/history", tags=["History"])
+app.include_router(paper_chat_router.router, prefix="/api/chat/paper", tags=["Paper Chat"])
 
 
 @app.get("/health", tags=["Health"])

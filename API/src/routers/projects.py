@@ -300,6 +300,26 @@ async def add_source(
             )
             source_dict["storage_path"] = storage_path
             source_dict["document_url"] = document_url
+
+            # Automatically ingest PDF into RAG with section-aware segmentation
+            if pdf_bytes and body.doi:
+                try:
+                    from src.service.ingestion import ingest_pdf
+                    chunks = await ingest_pdf(
+                        uid=uid,
+                        project_id=project_id,
+                        doi=body.doi,
+                        pdf_bytes=pdf_bytes,
+                    )
+                    logger.info(
+                        "[projects] Auto-ingested %d chunks for doi=%s",
+                        chunks, body.doi,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "[projects] Auto-ingestion failed for doi=%s: %s",
+                        body.doi, exc,
+                    )
             
     elif body.type == "url" and body.url:
         # Scrape URL, save as txt

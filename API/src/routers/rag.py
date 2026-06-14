@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from src.core.dependencies import get_current_user
 from src.models.rag import IngestRequest, IngestResponse, SearchRequest, SearchResult
 from src.service.rag import rag_service
-from src.service.web_loader import load_web_page, extract_text_from_pdf_bytes
+from src.service.web_loader import load_web_page
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -104,20 +104,25 @@ async def ingest_file(
                 detail="Uploaded file is not a valid PDF",
             )
 
-        text = extract_text_from_pdf_bytes(pdf_bytes)
-        if not text:
+        # Use section-aware ingestion for better search results
+        from src.service.ingestion import ingest_pdf
+
+        chunks_stored = await ingest_pdf(
+            uid=user["uid"],
+            project_id=project_id,
+            doi=file.filename or "uploaded",
+            pdf_bytes=pdf_bytes,
+            chat_id=chat_id,
+            base_metadata={"filename": file.filename, "source_type": "upload"},
+        )
+
+        if chunks_stored == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not extract text from PDF",
             )
 
-        return await rag_service.ingest(
-            uid=user["uid"],
-            project_id=project_id,
-            chat_id=chat_id,
-            text=text,
-            metadata={"filename": file.filename, "source_type": "upload"},
-        )
+        return IngestResponse(chunks_stored=chunks_stored)
     except HTTPException:
         raise
     except Exception as exc:
@@ -142,10 +147,10 @@ async def ingest_project_sources(
     Fetches and ingests content from all sources associated with a project.
     This uses the project's stored source URLs to populate the RAG store.
     """
-    from google.cloud import firestore
+    from firebase_admin import firestore
 
     try:
-        db = firestore.Client()
+        db = firestore.client()
         project_ref = (
             db.collection("users")
             .document(user["uid"])

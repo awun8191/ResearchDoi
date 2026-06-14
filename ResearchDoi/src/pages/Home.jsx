@@ -104,7 +104,7 @@ export default function Home() {
                       // Trigger search immediately if it looks like a DOI/ArXiv ID
                       handleSearch(text.trim(), 'auto');
                     }
-                  } catch (err) {
+                  } catch {
                     console.error('Clipboard access denied');
                   }
                 }}>

@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { listChatSessions, deleteChatSession } from '../services/gemini';
 import { getChatHistory, sendMessage as agentSendMessage } from '../services/agent';
-import { ingestDocument, ingestUrl, ingestFile, ingestProjectSources, clearRagStore } from '../services/rag';
+import { ingestUrl, ingestFile, ingestProjectSources, clearRagStore } from '../services/rag';
 
-export function useChat(userId, projectId, systemPrompt = '') {
+export function useChat(userId, projectId) {
   const [activeChatId, setActiveChatId] = useState('default');
   const [chatSessions, setChatSessions] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatTitle, setChatTitle] = useState('');
   const [sending, setSending] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(false);
 
   const refreshChatSessions = useCallback(async (preferredChatId) => {

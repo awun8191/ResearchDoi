@@ -10,16 +10,7 @@ from src.core.dependencies import get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_TIMESTAMP_FIELDS = (
-    "lookedUpAt",
-    "looked_up_at",
-    "createdAt",
-    "created_at",
-    "timestamp",
-    "date",
-    "updatedAt",
-    "updated_at",
-)
+_MAX_STREAM_WITHOUT_QUERY = 10000  # Absolute ceiling: never load more than this
 
 
 def _history_ref(uid: str):
@@ -34,6 +25,10 @@ def _ts_to_iso(value: Any) -> str | None:
         return dt.isoformat()
     except Exception:
         return str(value)
+
+
+_TIMESTAMP_FIELDS = ("lookedUpAt", "looked_up_at", "createdAt", "created_at",
+                     "timestamp", "date", "updatedAt", "updated_at")
 
 
 def _extract_timestamp(data: dict[str, Any]) -> str | None:
@@ -74,10 +69,20 @@ def _normalize_entry(doc) -> dict[str, Any]:
     return {
         "id": doc.id,
         "doi": str(data.get("doi") or "").strip(),
-        "title": str(data.get("title") or data.get("articleTitle") or data.get("article_title") or "").strip(),
+        "title": str(
+            data.get("title")
+            or data.get("articleTitle")
+            or data.get("article_title")
+            or ""
+        ).strip(),
         "authors": authors,
         "date": _extract_timestamp(data),
-        "url": data.get("url") or (f"https://doi.org/{data.get('doi')}" if data.get("doi") else None),
+        "url": data.get("url")
+        or (
+            f"https://doi.org/{data.get('doi')}"
+            if data.get("doi")
+            else None
+        ),
         "raw": data,
     }
 
@@ -102,22 +107,67 @@ async def list_history(
     q: str | None = Query(default=None, max_length=200),
     user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
+    """
+    List DOI lookup history with server-side pagination.
+
+    **Without search query (`q` empty):** Fully server-side paginated via
+    Firestore `.offset().limit()`. Fast and memory-efficient.
+
+    **With search query (`q` set):** Falls back to streaming and client-side
+    filtering capped at _MAX_STREAM_WITHOUT_QUERY entries for search support.
+    """
     query = (q or "").strip()
+    uid = user["uid"]
 
     try:
-        docs = [_normalize_entry(doc) for doc in _history_ref(user["uid"]).stream()]
+        if not query:
+            # ── Fast path: fully server-side paginated ─────────────────
+            docs_raw = (
+                _history_ref(uid)
+                .order_by("lookedUpAt", direction=firestore.Query.DESCENDING)
+                .offset(offset)
+                .limit(limit)
+                .stream()
+            )
+            items = [_normalize_entry(doc) for doc in docs_raw]
+
+            # Count total (lightweight — Firestore collection size estimate)
+            total = 0
+            try:
+                count_snapshot = _history_ref(uid).count().get()
+                total = count_snapshot[0].value if count_snapshot else 0
+            except Exception as exc:
+                logger.debug("[history] Count fallback: %s", exc)
+                total = offset + len(items)
+
+            return {
+                "items": items,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "query": None,
+            }
+
+        # ── Slow path: search with client-side filter ─────────────────
+        docs_raw = _history_ref(uid).stream()
+        all_entries = []
+        for i, doc in enumerate(docs_raw):
+            if i >= _MAX_STREAM_WITHOUT_QUERY:
+                break
+            all_entries.append(_normalize_entry(doc))
+
+        filtered = [e for e in all_entries if _matches_search(e, query)]
+        filtered.sort(key=lambda e: e.get("date") or "", reverse=True)
+        page = filtered[offset : offset + limit]
+
+        return {
+            "items": page,
+            "total": len(filtered),
+            "limit": limit,
+            "offset": offset,
+            "query": query or None,
+        }
+
     except Exception as exc:
-        logger.error("[history] Failed to load history for uid=%s: %s", user["uid"], exc)
-        docs = []
-
-    filtered = [entry for entry in docs if _matches_search(entry, query)]
-    filtered.sort(key=lambda entry: entry.get("date") or "", reverse=True)
-    page = filtered[offset : offset + limit]
-
-    return {
-        "items": page,
-        "total": len(filtered),
-        "limit": limit,
-        "offset": offset,
-        "query": query or None,
-    }
+        logger.error("[history] Failed to load history for uid=%s: %s", uid, exc)
+        return {"items": [], "total": 0, "limit": limit, "offset": offset, "query": query or None}

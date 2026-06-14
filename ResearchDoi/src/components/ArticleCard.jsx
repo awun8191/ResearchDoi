@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onUserProjects, addSourceViaApi, createProject } from '../services/projectService';
 import { ExternalLink, FolderPlus, Copy, Check, Calendar, FileText, Plus, X, Search } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 const currentUser = { uid: "localUser" };
 

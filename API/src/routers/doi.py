@@ -42,14 +42,14 @@ async def get_doi_metadata(
     result = None
     try:
         # 1. Try ArXiv (supports native ArXiv IDs and some DOIs)
-        result = _arxiv_service.fetch_metadata(doi)
+        result = await _arxiv_service.fetch_metadata_async(doi)
     except Exception as exc:
         logger.warning("[doi_router] ArXiv lookup failed for %s: %s", doi, exc)
 
     if result is None:
         try:
             # 2. Try CrossRef fallback (supports all scholarly DOIs)
-            result = _doi_service.fetch_metadata(doi)
+            result = await _doi_service.fetch_metadata(doi)
         except Exception as exc:
             logger.error("[doi_router] CrossRef lookup failed for %s: %s", doi, exc)
             raise HTTPException(
@@ -108,7 +108,7 @@ async def search_arxiv(
     Search ArXiv for papers based on a keyword query.
     """
     try:
-        results = _arxiv_service.search(q, max_results=limit)
+        results = await _arxiv_service.search_async(q, max_results=limit)
         
         # Convert raw service results to Pydantic models
         models = [
