@@ -6,7 +6,7 @@ Academic research paper management platform with AI-powered research assistance.
 
 | Component | Status | Detail |
 |---|---|---|
-| Backend API | ✅ | 36 tests passing, FastAPI + Firestore |
+| Backend API | ✅ | 36 tests passing, FastAPI + ChromaDB |
 | Frontend | ✅ | React + Vite, 0 lint errors, production build |
 | AI Agent | ✅ | google-adk v1.25, oracle transfer architecture |
 
@@ -86,7 +86,7 @@ cd AGENT && uv run python src/main.py
 ## Components
 
 ### API
-FastAPI service with endpoints for DOI resolution (`doi.org` / Crossref), PDF ingestion (arxiv, direct URL), RAG vector storage (Firestore), project management, and Gemini-based chat. Includes a mock LLM mode (`MOCK_LLM=true`) for testing without API keys.
+FastAPI service with endpoints for DOI resolution (`doi.org` / Crossref), PDF ingestion (arxiv, direct URL), RAG vector storage (ChromaDB), project management, and Gemini-based chat. Includes a mock LLM mode (`MOCK_LLM=true`) for testing without API keys.
 
 ### Frontend
 React SPA with project workspace, chat interface, paper discovery, and thesis writing workflow. Built with Vite, Tailwind CSS, framer-motion, and the Google ADK web client.
