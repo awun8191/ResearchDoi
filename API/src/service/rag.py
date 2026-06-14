@@ -15,10 +15,10 @@ Chunking strategy:
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 import re
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -47,10 +47,15 @@ _CHROMA_DIR = Path.home() / ".hermes" / "chromadb" / "rast"
 
 
 def _collection_name(uid: str, project_id: str, chat_id: str = "default") -> str:
-    """Sanitized collection name — ChromaDB allows alphanumeric + hyphens/underscores."""
-    safe = re.sub(r"[^a-zA-Z0-9_-]", "_", f"rast_{uid}_{project_id}_{chat_id}")
-    # ChromaDB has a 63-char limit on collection names
-    return safe[:63]
+    """Deterministic collection name using SHA-256 suffix to guarantee uniqueness.
+    
+    The old approach truncated sanitized IDs to 63 chars, risking collisions when
+    two different (uid, project_id, chat_id) combos shared the same prefix.
+    Using a hash suffix eliminates collision risk entirely.
+    """
+    raw = f"{uid}|{project_id}|{chat_id}"
+    suffix = hashlib.sha256(raw.encode()).hexdigest()[:32]
+    return f"rast_{suffix}"
 
 
 # ── Text chunking ─────────────────────────────────────────────────────────────
@@ -194,7 +199,13 @@ class RagService:
                 tasks = [_embed(client, chunk) for chunk in batch]
                 try:
                     embeddings = await asyncio.gather(*tasks)
-                    ids = [f"chunk_{uuid.uuid4().hex[:12]}" for _ in batch]
+                    # Deterministic chunk IDs to prevent duplicates on re-ingest
+                    source_id = metadata.get("source_id", f"{uid}_{project_id}")
+                    ids = []
+                    for chunk_idx, chunk in enumerate(batch):
+                        abs_idx = batch_start + chunk_idx
+                        content_hash = hashlib.md5(chunk.encode()).hexdigest()[:8]
+                        ids.append(f"{source_id}_{abs_idx}_{content_hash}")
                     metadatas = [{**metadata, "doc_id": ids[i]} for i in range(len(batch))]
 
                     collection.add(

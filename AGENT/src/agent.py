@@ -17,8 +17,10 @@ from google.adk.agents import SequentialAgent, LlmAgent, BaseAgent
 from google.adk.tools.transfer_to_agent_tool import TransferToAgentTool
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from typing import AsyncGenerator
+import re
+from typing import AsyncGenerator, Optional
 from src.config import primary_model, writing_model, init_session_state, create_status_event
+from google.genai import types as genai_types
 
 load_dotenv()
 
@@ -250,9 +252,90 @@ transfer_tool = TransferToAgentTool(agent_names=[
     "url_analyst"
 ])
 
+
+# ── Explicit routing callback ───────────────────────────────────────────────
+# Runs before the LLM, pattern-matches the user message and injects a
+# function_call to transfer_to_agent — no token cost for unambiguous cases.
+
+
+async def routing_callback(
+    ctx,  # CallbackContext
+) -> Optional[genai_types.Content]:
+    """Pre-LLM routing: match keywords in the user message and transfer directly."""
+    user_content = ctx.user_content
+    if not user_content or not user_content.parts:
+        return None
+
+    text = ""
+    for part in user_content.parts:
+        if part.text:
+            text += part.text
+
+    if not text:
+        return None
+
+    t = text.strip().lower()
+
+    # Rule 1: URL present → URL analyst
+    if re.search(r"https?://[^\s]+", text):
+        return genai_types.Content(
+            parts=[genai_types.Part.from_function_call(
+                name="transfer_to_agent",
+                args={"agent_name": "url_analyst"},
+            )],
+            role="assistant",
+        )
+
+    # Rule 2: Section writing keywords → thesis writing pipeline
+    if re.search(
+        r"write\s+(?:a\s+)?(?:thesis\s+)?(?:section|chapter|introduction"
+        r"|methodology|results?|conclusion|literature review|abstract|discussion)",
+        t,
+    ):
+        return genai_types.Content(
+            parts=[genai_types.Part.from_function_call(
+                name="transfer_to_agent",
+                args={"agent_name": "thesis_writing_pipeline"},
+            )],
+            role="assistant",
+        )
+
+    # Rule 3: Full thesis keywords → thesis generator
+    if re.search(
+        r"(?:full|complete|entire|whole|generate|draft)\s+(?:thesis|paper|dissertation)"
+        r"|5[\s-]?chapter|autonomous thesis",
+        t,
+    ):
+        return genai_types.Content(
+            parts=[genai_types.Part.from_function_call(
+                name="transfer_to_agent",
+                args={"agent_name": "autonomous_thesis_generator"},
+            )],
+            role="assistant",
+        )
+
+    # Rule 4: Research keywords → deep research
+    if re.search(
+        r"(?:find|search|look\s+up|discover|research|hunt)"
+        r"\s+(?:papers?|research|articles?|publications?|literature|doi|arxiv|topic)",
+        t,
+    ):
+        return genai_types.Content(
+            parts=[genai_types.Part.from_function_call(
+                name="transfer_to_agent",
+                args={"agent_name": "autonomous_deep_research"},
+            )],
+            role="assistant",
+        )
+
+    # No match — let the LLM orchestrator handle it
+    return None
+
+
 orchestrator_agent = LlmAgent(
     name="the_Orchestrator",
     model=primary_model,
+    before_agent_callback=[routing_callback],
     instruction="""
     You are "The Orchestrator" for Rast.
 
