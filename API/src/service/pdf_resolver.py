@@ -484,12 +484,16 @@ async def resolve_pdf(doi: str, crossref_links: Optional[list[dict]] = None) -> 
         # ── Tier 4a: Publisher URL heuristics ─────────────────────────────────
         heuristic_url = _resolve_by_publisher_pattern(doi)
         if heuristic_url:
-            return PdfResolutionResponse(
-                pdf_url=heuristic_url,
-                is_open_access=unpaywall.is_open_access,
-                oa_status=unpaywall.oa_status,
-                resolved_via="heuristic",
-            )
+            # Probe the heuristic URL — don't trust blindly
+            if await _probe_is_pdf(client, heuristic_url):
+                logger.info("[pdf_resolver] Heuristic URL validated: %s", heuristic_url)
+                return PdfResolutionResponse(
+                    pdf_url=heuristic_url,
+                    is_open_access=unpaywall.is_open_access,
+                    oa_status=unpaywall.oa_status,
+                    resolved_via="heuristic",
+                )
+            logger.info("[pdf_resolver] Heuristic URL failed probe: %s", heuristic_url)
 
         # ── Tier 4b: CrossRef high-confidence direct links ─────────────────────
         # CrossRef links tagged application/pdf OR scoring high as PDF URLs

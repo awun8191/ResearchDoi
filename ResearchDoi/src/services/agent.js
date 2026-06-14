@@ -16,7 +16,7 @@ import { apiFetch } from './api.js';
  * @param {string} chatId - Chat ID
  * @returns {Promise<boolean>} True if session created or exists
  */
-export async function createSession(userId, projectId, chatId) {
+export async function createSession(/* userId, projectId, chatId */) {
     return true; // Session is created on first message
 }
 

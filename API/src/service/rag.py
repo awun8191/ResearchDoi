@@ -1,14 +1,12 @@
 """
-Server-side RAG service.
+Server-side RAG service — ChromaDB-backed vector store.
 
 Architecture:
-  - In-process vector store (dict keyed by "{uid}:{project_id}:{chat_id}")
-  - Embeddings generated via Gemini Embedding API (gemini-embedding-001)
-  - Cosine similarity computed with numpy for speed
-  - Chunk cap: MAX_CHUNKS_PER_DOC (100) — prevents runaway API quota
-  - Chunks are NOT persisted to Firestore (embeddings are deterministic,
-    cheap to recompute, and large to store). On restart, the frontend
-    re-seeds the store by calling POST /api/rag/ingest for each source.
+  - ChromaDB PersistentClient — data survives server restarts
+  - One collection per (uid, project_id, chat_id) triplet
+  - Embeddings generated via OpenRouter embedding API
+  - Cosine similarity (default HNSW distance metric in ChromaDB)
+  - Chunk cap: MAX_CHUNKS_PER_DOC (100)
 
 Chunking strategy:
   - Split on paragraph boundaries (\n\n) first
@@ -18,13 +16,14 @@ Chunking strategy:
 
 import asyncio
 import logging
+import os
 import re
 import uuid
-from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+import chromadb
 import httpx
-import numpy as np
 
 from src.core.config import settings
 from src.models.rag import IngestResponse, SearchResult
@@ -36,16 +35,22 @@ MAX_CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 MAX_CHUNKS_PER_DOC = 100
 
-EMBEDDING_MODEL = "gemini-embedding-2-preview"
-EMBEDDING_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent"
+EMBEDDING_MODEL = settings.embedding_model
+OPENROUTER_BASE = settings.openrouter_base
+OPENROUTER_HEADERS = {
+    "Authorization": f"Bearer {settings.openrouter_api_key}",
+    "Content-Type": "application/json",
+}
+
+# ChromaDB persistence path
+_CHROMA_DIR = Path.home() / ".hermes" / "chromadb" / "rast"
 
 
-@dataclass
-class VectorEntry:
-    id: str
-    text: str
-    embedding: np.ndarray
-    metadata: dict[str, Any] = field(default_factory=dict)
+def _collection_name(uid: str, project_id: str, chat_id: str = "default") -> str:
+    """Sanitized collection name — ChromaDB allows alphanumeric + hyphens/underscores."""
+    safe = re.sub(r"[^a-zA-Z0-9_-]", "_", f"rast_{uid}_{project_id}_{chat_id}")
+    # ChromaDB has a 63-char limit on collection names
+    return safe[:63]
 
 
 # ── Text chunking ─────────────────────────────────────────────────────────────
@@ -59,7 +64,6 @@ def _chunk_text(text: str) -> list[str]:
     3. Split long paragraphs at sentence boundaries
     4. Add CHUNK_OVERLAP from the tail of the previous chunk
     """
-    # Normalise whitespace
     text = re.sub(r"\n{3,}", "\n\n", text.strip())
     paragraphs = text.split("\n\n")
 
@@ -76,7 +80,6 @@ def _chunk_text(text: str) -> list[str]:
         else:
             if buffer:
                 chunks.append(buffer)
-            # Para itself may exceed MAX_CHUNK_SIZE — split at sentences
             if len(para) > MAX_CHUNK_SIZE:
                 sentences = re.split(r"(?<=[.!?])\s+", para)
                 sub_buffer = ""
@@ -113,51 +116,59 @@ def _chunk_text(text: str) -> list[str]:
 
 
 async def _embed(
-    client: httpx.AsyncClient, text: str, task_type: str = "RETRIEVAL_DOCUMENT"
-) -> np.ndarray:
-    """Call Gemini Embedding API and return a numpy unit vector."""
+    client: httpx.AsyncClient, text: str
+) -> list[float]:
+    """Call OpenRouter embedding API and return the embedding vector."""
+    url = f"{OPENROUTER_BASE}/embeddings"
     resp = await client.post(
-        EMBEDDING_URL,
-        params={"key": settings.gemini_api_key},
+        url,
+        headers=OPENROUTER_HEADERS,
         json={
-            "model": f"models/{EMBEDDING_MODEL}",
-            "content": {"parts": [{"text": text}]},
-            "taskType": task_type,
+            "model": EMBEDDING_MODEL,
+            "input": text,
         },
         timeout=15.0,
     )
     resp.raise_for_status()
-    values = resp.json()["embedding"]["values"]
-    vec = np.array(values, dtype=np.float32)
-    norm = np.linalg.norm(vec)
-    return vec / norm if norm > 0 else vec
+    data = resp.json()
+    return data["data"][0]["embedding"]
 
 
-def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Dot product of two pre-normalised unit vectors = cosine similarity."""
-    return float(np.dot(a, b))
-
-
-# ── Service class ──────────────────────────────────────────────────────────────
+# ── ChromaDB-backed service ────────────────────────────────────────────────────
 
 
 class RagService:
     """
-    Singleton-style RAG service.
-    Vector stores are per (uid, project_id, chat_id) triplet and live for the process lifetime.
-    This ensures each chat instance has its own RAG context.
+    RAG service backed by ChromaDB PersistentClient.
+
+    Each (uid, project_id, chat_id) triplet gets its own collection.
+    Data persists across server restarts — no re-seeding needed.
     """
 
     def __init__(self) -> None:
-        self._stores: dict[str, list[VectorEntry]] = {}
+        os.makedirs(_CHROMA_DIR, exist_ok=True)
+        self._client = chromadb.PersistentClient(path=str(_CHROMA_DIR))
+        self._collection_cache: dict[str, Any] = {}
 
-    def _store_key(self, uid: str, project_id: str, chat_id: str = "default") -> str:
-        return f"{uid}:{project_id}:{chat_id}"
+    def _get_collection(self, uid: str, project_id: str, chat_id: str = "default") -> Any:
+        """Get or create a ChromaDB collection for the given scope."""
+        name = _collection_name(uid, project_id, chat_id)
 
-    def _get_store(
-        self, uid: str, project_id: str, chat_id: str = "default"
-    ) -> list[VectorEntry]:
-        return self._stores.setdefault(self._store_key(uid, project_id, chat_id), [])
+        # Return cached if available (avoids repeated metadata checks)
+        if name in self._collection_cache:
+            return self._collection_cache[name]
+
+        try:
+            collection = self._client.get_or_create_collection(
+                name=name,
+                metadata={"hnsw:space": "cosine"},
+            )
+        except Exception as exc:
+            logger.error("[rag] Failed to get/create collection %s: %s", name, exc)
+            raise
+
+        self._collection_cache[name] = collection
+        return collection
 
     async def ingest(
         self,
@@ -168,46 +179,41 @@ class RagService:
         chat_id: str = "default",
     ) -> IngestResponse:
         """
-        Chunk text, embed each chunk, and store in the in-process vector store.
-        Chunks are batched: we parallelise embedding for up to 10 chunks at once
-        to avoid rate-limit issues while still being much faster than purely sequential.
+        Chunk text, embed each chunk, and store in ChromaDB collection.
+        Chunks are batched: we parallelise embedding for up to 10 chunks at once.
         """
         metadata = metadata or {}
         chunks = _chunk_text(text)
-        store = self._get_store(uid, project_id, chat_id)
+        collection = self._get_collection(uid, project_id, chat_id)
         batch_size = 10
         stored = 0
 
         async with httpx.AsyncClient() as client:
             for batch_start in range(0, len(chunks), batch_size):
                 batch = chunks[batch_start : batch_start + batch_size]
-                tasks = [_embed(client, chunk, "RETRIEVAL_DOCUMENT") for chunk in batch]
+                tasks = [_embed(client, chunk) for chunk in batch]
                 try:
                     embeddings = await asyncio.gather(*tasks)
-                    for chunk, embedding in zip(batch, embeddings):
-                        store.append(
-                            VectorEntry(
-                                id=f"chunk_{uuid.uuid4().hex[:12]}",
-                                text=chunk,
-                                embedding=embedding,
-                                metadata=metadata,
-                            )
-                        )
-                        stored += 1
+                    ids = [f"chunk_{uuid.uuid4().hex[:12]}" for _ in batch]
+                    metadatas = [{**metadata, "doc_id": ids[i]} for i in range(len(batch))]
+
+                    collection.add(
+                        ids=ids,
+                        embeddings=embeddings,
+                        metadatas=metadatas,
+                        documents=batch,
+                    )
+                    stored += len(batch)
                 except Exception as exc:
                     logger.error(
                         "[rag] Embedding batch failed at offset %d: %s",
-                        batch_start,
-                        exc,
+                        batch_start, exc,
                     )
-                    break  # partial ingest — don't raise, caller gets the count
+                    break
 
         logger.info(
             "[rag] Ingested %d chunks for uid=%s project=%s chat=%s",
-            stored,
-            uid,
-            project_id,
-            chat_id,
+            stored, uid, project_id, chat_id,
         )
         return IngestResponse(chunks_stored=stored)
 
@@ -220,46 +226,81 @@ class RagService:
         chat_id: str = "default",
     ) -> list[SearchResult]:
         """
-        Embed the query and return the top-k most similar chunks by cosine similarity.
+        Embed the query and return the top-k most similar chunks.
+        Uses ChromaDB's built-in ANN search (HNSW with cosine distance).
         """
-        store = self._get_store(uid, project_id, chat_id)
-        if not store:
+        collection = self._get_collection(uid, project_id, chat_id)
+
+        # Quick check if collection has data
+        try:
+            count = collection.count()
+        except Exception:
+            count = 0
+
+        if count == 0:
             logger.info(
-                "[rag] Vector store empty for uid=%s project=%s chat=%s",
-                uid,
-                project_id,
-                chat_id,
+                "[rag] ChromaDB collection empty for uid=%s project=%s chat=%s",
+                uid, project_id, chat_id,
             )
             return []
 
         async with httpx.AsyncClient() as client:
             try:
-                query_embedding = await _embed(client, query, "RETRIEVAL_QUERY")
+                query_embedding = await _embed(client, query)
             except Exception as exc:
                 logger.error("[rag] Failed to embed query: %s", exc)
                 return []
 
-        scored = [
-            SearchResult(
-                id=entry.id,
-                text=entry.text,
-                score=_cosine_similarity(query_embedding, entry.embedding),
-                metadata=entry.metadata,
+        try:
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=min(top_k, count),
             )
-            for entry in store
-        ]
+        except Exception as exc:
+            logger.error("[rag] ChromaDB query failed: %s", exc)
+            return []
+
+        # ChromaDB returns lists-of-lists (one per query, we have one query)
+        ids = results.get("ids", [[]])[0]
+        distances = results.get("distances", [[]])[0]
+        documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
+
+        if not ids:
+            return []
+
+        # ChromaDB cosine distance: 0 = identical, 2 = opposite
+        # Convert to similarity score: 1 - (distance / 2) → 0..1 range
+        scored = []
+        for i in range(len(ids)):
+            distance = distances[i] if i < len(distances) else 1.0
+            score = 1.0 - (distance / 2.0)
+            scored.append(
+                SearchResult(
+                    id=ids[i],
+                    text=documents[i] if i < len(documents) else "",
+                    score=max(0.0, score),
+                    metadata=metadatas[i] if i < len(metadatas) else {},
+                )
+            )
+
         scored.sort(key=lambda r: r.score, reverse=True)
-        return scored[:top_k]
+        return scored
 
     def clear(self, uid: str, project_id: str, chat_id: str = "default") -> None:
-        key = self._store_key(uid, project_id, chat_id)
-        self._stores.pop(key, None)
-        logger.info(
-            "[rag] Vector store cleared for uid=%s project=%s chat=%s",
-            uid,
-            project_id,
-            chat_id,
-        )
+        """Delete the entire ChromaDB collection for the given scope."""
+        name = _collection_name(uid, project_id, chat_id)
+        try:
+            self._client.delete_collection(name)
+            self._collection_cache.pop(name, None)
+            logger.info(
+                "[rag] ChromaDB collection deleted: uid=%s project=%s chat=%s",
+                uid, project_id, chat_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[rag] Failed to delete collection %s: %s", name, exc,
+            )
 
 
 # Module-level singleton — imported by gemini.py and rag router

@@ -219,11 +219,21 @@ autonomous_thesis_agent.name = "autonomous_thesis_generator"
 deep_research_agent.name = "autonomous_deep_research"
 url_analyst.name = "url_analyst"
 
+
+def _set_input_schema(agent: BaseAgent, schema) -> None:
+    """Recursively set input_schema on the first LlmAgent in a SequentialAgent chain."""
+    if isinstance(agent, LlmAgent):
+        agent.input_schema = schema
+    elif isinstance(agent, SequentialAgent) and agent.sub_agents:
+        _set_input_schema(agent.sub_agents[0], schema)
+    # If a LoopAgent or custom BaseAgent, skip (schema assignment doesn't apply)
+
+
 # Set input schemas so TransferToAgentTool can extract arguments from the user's prompt
-thesis_writing_agent.input_schema = WritingSectionRequest
-autonomous_thesis_agent.input_schema = ThesisFullPipelineRequest
-deep_research_agent.input_schema = DeepResearchRequest
-url_analyst.input_schema = UrlAnalysisRequest
+_set_input_schema(thesis_writing_agent, WritingSectionRequest)
+_set_input_schema(autonomous_thesis_agent, ThesisFullPipelineRequest)
+_set_input_schema(deep_research_agent, DeepResearchRequest)
+_set_input_schema(url_analyst, UrlAnalysisRequest)
 
 thesis_writing_agent.description = "Write a single thesis section based on project documents. Requires 'research_topic' and 'target_section'."
 autonomous_thesis_agent.description = "Generate a full 5-chapter thesis with automated research and citations. Requires 'research_topic'."

@@ -178,7 +178,7 @@ export default function ParticleBackground({ particleColor = 'rgba(255, 255, 255
       if (canvas.releasePointerCapture) {
         try {
           canvas.releasePointerCapture(e.pointerId);
-        } catch (_) {
+        } catch {
           // Ignore pointer capture errors from stale ids.
         }
       }

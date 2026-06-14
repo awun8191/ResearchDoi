@@ -10,7 +10,7 @@ class AppEnv(str, Enum):
 class Settings(BaseSettings):
     app_env: AppEnv = AppEnv.DEVELOPMENT
     api_key: str = ""                    # Required in production — checked against X-Api-Key header
-    gemini_api_key: str = ""
+    openrouter_api_key: str = ""         # OpenRouter key for chat completions + embeddings
     unpaywall_email: str = "app@yourdomain.com"
     firebase_service_account_path: str = "./service-account.json"
     firebase_storage_bucket: str = ""
@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     cors_origins_raw: str = "http://localhost:5173"
     agent_base_url: str = "http://localhost:8000"
 
+    # OpenRouter model config
+    chat_model: str = "google/gemma-4-31b-it"
+    embedding_model: str = "qwen/qwen3-embedding-8b"
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins_raw.split(",") if o.strip()]
@@ -26,6 +30,10 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env == AppEnv.DEVELOPMENT
+
+    @property
+    def openrouter_base(self) -> str:
+        return "https://openrouter.ai/api/v1"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

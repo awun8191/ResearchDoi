@@ -32,7 +32,7 @@ async def resolve_pdf_url(
     """
     from src.service.doi_lookup import DoiLookup
     doi_service = DoiLookup()
-    meta = doi_service.fetch_metadata(doi) or {}
+    meta = await doi_service.fetch_metadata(doi) or {}
     crossref_links = meta.get("link", [])  # raw CrossRef link array if present
 
     return await resolve_pdf(doi=doi, crossref_links=crossref_links)

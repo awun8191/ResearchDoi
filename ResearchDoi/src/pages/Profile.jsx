@@ -2,8 +2,6 @@ import React, { useMemo } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { Palette, Check } from 'lucide-react';
 
-const currentUser = { email: "scholar@researchdoi.local", uid: "localUser" };
-
 export default function Profile() {
   const { colorScheme, setColorScheme } = useTheme();
 

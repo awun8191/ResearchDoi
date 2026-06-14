@@ -61,16 +61,16 @@ export default function ProjectWorkspace() {
     activeChatId,
     chatSessions,
     messages,
-    chatTitle,
+    chatTitle, // eslint-disable-line no-unused-vars
     sending,
-    setChatTitle,
-    refreshChatSessions,
+    setChatTitle, // eslint-disable-line no-unused-vars
+    refreshChatSessions, // eslint-disable-line no-unused-vars
     sendMessage,
     startNewConversation,
     deleteConversation,
     switchConversation,
     reseedRAG,
-    ingestSource,
+    ingestSource, // eslint-disable-line no-unused-vars
   } = useChat(currentUser?.uid, projectId, project?.instructions || '');
 
   // Reseed RAG when project or chat changes
@@ -79,7 +79,7 @@ export default function ProjectWorkspace() {
       const timer = setTimeout(() => reseedRAG(project.sources), 1000);
       return () => clearTimeout(timer);
     }
-  }, [project?.id, activeChatId, reseedRAG]);
+  }, [project?.id, project?.sources, activeChatId, reseedRAG]);
 
   useEffect(() => {
     if (!currentUser || !projectId) return;
@@ -93,7 +93,7 @@ export default function ProjectWorkspace() {
       setLoading(false);
     });
     return unsubscribe;
-  }, [currentUser, projectId]);
+  }, [projectId]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function ProjectWorkspace() {
     
     try {
       await sendMessage(text);
-    } catch (err) {
+    } catch {
       // Error handling is done in the hook
     } finally {
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -566,7 +566,7 @@ export default function ProjectWorkspace() {
             </div>
           ) : (
             <div className="chat-messages-inner">
-              {messages.map((msg, idx) => (
+              {messages.map((msg) => (
                 <div key={msg.id} className={`lab-msg ${msg.role === 'user' ? 'user' : 'ai'}`}>
                   <div className="msg-avatar glass">
                     {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}

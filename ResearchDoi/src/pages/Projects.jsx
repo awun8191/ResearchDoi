@@ -27,7 +27,7 @@ export default function Projects() {
       setLoading(false);
     });
     return unsubscribe;
-  }, [currentUser]);
+  }, []);
 
   async function handleCreate(e) {
     e.preventDefault();
