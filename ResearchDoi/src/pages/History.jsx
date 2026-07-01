@@ -277,19 +277,20 @@ export default function History() {
         .history-input {
           width: 100%;
           padding: 1rem 1.25rem 1rem 3.5rem;
-          background: rgba(0,0,0,0.2);
-          border: 1px solid var(--border);
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
           border-radius: var(--radius-lg);
           color: var(--text-main);
           font-family: var(--font-body);
           outline: none;
-          transition: var(--transition-base);
+          transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
         }
 
         .history-input:focus {
           border-color: var(--secondary);
-          box-shadow: 0 0 0 4px var(--secondary-glow);
-          background: rgba(0,0,0,0.4);
+          box-shadow: 0 0 24px var(--secondary-glow), var(--shadow-inner);
+          background: var(--bg-surface);
         }
 
         .history-grid {

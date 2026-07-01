@@ -85,10 +85,11 @@ url_analyst_worker = LlmAgent(
     input_schema=UrlAnalysisRequest,
     instruction="""
     You are a technical URL analyst. 
-    Use the `mcp_exa_web_fetch_exa` tool to retrieve and analyze the content of the URL provided: {url}.
+    Use the `mcp_exa_web_fetch_exa` tool to retrieve and analyze the content of the URL provided in the input or session state.
     After analysis, control returns to the Orchestrator.
     """,
     tools=[mcp_exa_web_fetch_exa],
+    output_key="url_findings",
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
 )
@@ -99,10 +100,8 @@ url_analyst_returner = LlmAgent(
     instruction="""
     The analysis of the URL is complete.
     
-    URL FINDINGS:
-    {url_findings}
-    
-    Summarize these findings for the user. If the findings are empty or indicate an error, explain that you couldn't extract data.
+    Review the findings in the session state and summarize them for the user. 
+    If the findings indicate an error or are missing, explain that you couldn't extract data.
     """,
 )
 
@@ -221,7 +220,6 @@ autonomous_thesis_agent.name = "autonomous_thesis_generator"
 deep_research_agent.name = "autonomous_deep_research"
 url_analyst.name = "url_analyst"
 
-
 def _set_input_schema(agent: BaseAgent, schema) -> None:
     """Recursively set input_schema on the first LlmAgent in a SequentialAgent chain."""
     if isinstance(agent, LlmAgent):
@@ -236,6 +234,7 @@ _set_input_schema(thesis_writing_agent, WritingSectionRequest)
 _set_input_schema(autonomous_thesis_agent, ThesisFullPipelineRequest)
 _set_input_schema(deep_research_agent, DeepResearchRequest)
 _set_input_schema(url_analyst, UrlAnalysisRequest)
+
 
 thesis_writing_agent.description = "Write a single thesis section based on project documents. Requires 'research_topic' and 'target_section'."
 autonomous_thesis_agent.description = "Generate a full 5-chapter thesis with automated research and citations. Requires 'research_topic'."
@@ -259,9 +258,10 @@ transfer_tool = TransferToAgentTool(agent_names=[
 
 
 async def routing_callback(
-    ctx,  # CallbackContext
+    callback_context,  # CallbackContext
 ) -> Optional[genai_types.Content]:
     """Pre-LLM routing: match keywords in the user message and transfer directly."""
+    ctx = callback_context
     user_content = ctx.user_content
     if not user_content or not user_content.parts:
         return None

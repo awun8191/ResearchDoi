@@ -17,7 +17,8 @@ import httpx
 from google.cloud import firestore as fs
 from firebase_admin import firestore
 
-from ..core.config import settings
+from src.core.config import settings
+from src.tools.project_state import UPDATE_THESIS_SECTION_TOOL, execute_update_thesis_section
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,9 @@ async def _load_history(
             history.append(
                 {"role": openai_role, "content": d.get("text", "")}
             )
-        return history
+            
+        # Sliding window: keep only the last 20 messages to prevent context blowout
+        return history[-20:]
     except Exception as exc:
         logger.warning("[openrouter] Could not load chat history: %s", exc)
         return []
@@ -268,6 +271,32 @@ async def delete_chat_session(uid: str, project_id: str, chat_id: str) -> None:
         logger.error("[openrouter] Failed to delete chat session: %s", exc)
 
 
+async def record_external_turn(
+    uid: str,
+    project_id: str,
+    chat_id: str,
+    user_text: str,
+    model_text: str,
+    chat_title: Optional[str] = None,
+) -> str:
+    """
+    Persist a turn produced outside the OpenRouter chat path.
+
+    The project workspace uses the same Firestore chat documents for regular
+    chat and ADK-agent chat, so proxy responses must create/update the session
+    metadata and write the turn before the frontend refreshes history.
+    """
+    _ensure_chat_document(uid, project_id, chat_id, chat_title)
+    _save_turn(uid, project_id, chat_id, user_text, model_text)
+
+    current_title = _get_chat_title(uid, project_id, chat_id)
+    if not current_title or current_title == "Untitled Chat":
+        current_title = _chat_title_from_text(user_text)
+        _ensure_chat_document(uid, project_id, chat_id, current_title)
+
+    return current_title
+
+
 # ── RAG tool declaration (OpenAI function-calling format) ────────────────────
 
 _RAG_TOOL = {
@@ -311,7 +340,7 @@ async def _execute_rag_search(
     formatted = []
     for r in results:
         title = r.metadata.get("title", "Unknown source")
-        formatted.append(f"[Source: {title}]\n{r.text}")
+        formatted.append(f"[Cite: {title}]\n{r.text}")
     return "\n\n---\n\n".join(formatted)
 
 
@@ -364,8 +393,25 @@ async def send_message(
     default_system = (
         "You are a research assistant helping the user analyse and discuss academic papers. "
         "When the user asks about specific papers or technical content, use the "
-        "search_knowledge_base tool to find relevant excerpts from their uploaded sources."
+        "search_knowledge_base tool to find relevant excerpts from their uploaded sources. "
+        "You also have access to update the thesis sections using the update_thesis_section tool. "
+        "CRITICAL INSTRUCTION: When using information from the knowledge base, you MUST cite your sources deterministically using EXACTLY this format: [Cite: Source Title]. "
+        "Do NOT hallucinate citations or invent your own citation formats. Only use the titles provided by the search tool."
     )
+    
+    # Inject thesis state to system prompt to maintain context
+    from src.service import projects as project_service
+    project = await project_service.get_project(uid=uid, project_id=project_id)
+    if project and project.thesis:
+        thesis_parts = ["\nCurrent Thesis State (Truncated for Context Window):"]
+        for section_id, content in project.thesis.items():
+            words = content.split()
+            if len(words) > 300:
+                truncated = " ".join(words[:300]) + "... [TRUNCATED]"
+            else:
+                truncated = content
+            thesis_parts.append(f"### Section: {section_id}\n{truncated}")
+        default_system += "\n".join(thesis_parts)
 
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt or default_system}
@@ -378,7 +424,7 @@ async def send_message(
 
     for _ in range(max_function_call_rounds):
         try:
-            data = await _openrouter_chat(messages, tools=[_RAG_TOOL])
+            data = await _openrouter_chat(messages, tools=[_RAG_TOOL, UPDATE_THESIS_SECTION_TOOL])
         except Exception as exc:
             logger.error("[openrouter] API call failed: %s", exc)
             model_reply_text = "I'm sorry, I could not generate a response."
@@ -401,6 +447,12 @@ async def send_message(
                     query_val = fn_args.get("query", "")
                     tool_result = await _execute_rag_search(
                         uid, project_id, chat_id, query_val
+                    )
+                elif fn_name == "update_thesis_section":
+                    section_id_val = fn_args.get("section_id", "")
+                    content_val = fn_args.get("content", "")
+                    tool_result = await execute_update_thesis_section(
+                        uid, project_id, section_id_val, content_val
                     )
                 else:
                     tool_result = f"Unknown function: {fn_name}"

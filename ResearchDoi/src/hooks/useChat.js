@@ -3,8 +3,18 @@ import { listChatSessions, deleteChatSession } from '../services/gemini';
 import { getChatHistory, sendMessage as agentSendMessage } from '../services/agent';
 import { ingestUrl, ingestFile, ingestProjectSources, clearRagStore } from '../services/rag';
 
+function getStoredActiveChatId(projectId) {
+  if (!projectId || typeof window === 'undefined') return 'default';
+  return localStorage.getItem(`researchdoi_active_chat_${projectId}`) || 'default';
+}
+
+function storeActiveChatId(projectId, chatId) {
+  if (!projectId || !chatId || typeof window === 'undefined') return;
+  localStorage.setItem(`researchdoi_active_chat_${projectId}`, chatId);
+}
+
 export function useChat(userId, projectId) {
-  const [activeChatId, setActiveChatId] = useState('default');
+  const [activeChatId, setActiveChatId] = useState(() => getStoredActiveChatId(projectId));
   const [chatSessions, setChatSessions] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatTitle, setChatTitle] = useState('');
@@ -17,9 +27,13 @@ export function useChat(userId, projectId) {
     try {
       const sessions = await listChatSessions(userId, projectId);
       setChatSessions(sessions);
-      const wanted = preferredChatId || activeChatId;
+      const wanted = preferredChatId || getStoredActiveChatId(projectId) || activeChatId;
       if (sessions.length > 0 && !sessions.some((s) => s.chat_id === wanted)) {
         setActiveChatId(sessions[0].chat_id);
+        storeActiveChatId(projectId, sessions[0].chat_id);
+      } else if (sessions.some((s) => s.chat_id === wanted)) {
+        setActiveChatId(wanted);
+        storeActiveChatId(projectId, wanted);
       }
     } catch (err) {
       console.error('Failed to load chat sessions:', err);
@@ -82,6 +96,14 @@ export function useChat(userId, projectId) {
   useEffect(() => {
     refreshChatSessions();
   }, [userId, projectId, refreshChatSessions]);
+
+  useEffect(() => {
+    setActiveChatId(getStoredActiveChatId(projectId));
+  }, [projectId]);
+
+  useEffect(() => {
+    storeActiveChatId(projectId, activeChatId);
+  }, [projectId, activeChatId]);
 
   useEffect(() => {
     if (!userId || !projectId || !activeChatId) return;
@@ -153,6 +175,7 @@ export function useChat(userId, projectId) {
       );
       
       await refreshChatSessions(activeChatId);
+      storeActiveChatId(projectId, activeChatId);
       return { reply: fullResponse, title: nextTitle };
     } catch (err) {
       console.error('Chat error:', err);
@@ -186,9 +209,10 @@ export function useChat(userId, projectId) {
       ...prev,
     ]);
     setActiveChatId(nextId);
+    storeActiveChatId(projectId, nextId);
     setChatTitle('');
     setMessages([]);
-  }, []);
+  }, [projectId]);
 
   const deleteConversation = useCallback(async (chatId) => {
     if (!userId || !projectId) return;
@@ -200,9 +224,11 @@ export function useChat(userId, projectId) {
       if (activeChatId === chatId) {
         if (remaining.length > 0) {
           setActiveChatId(remaining[0].chat_id);
+          storeActiveChatId(projectId, remaining[0].chat_id);
           setChatTitle(remaining[0].title || '');
         } else {
           setActiveChatId('default');
+          storeActiveChatId(projectId, 'default');
           setChatTitle('');
           setMessages([]);
         }
@@ -215,8 +241,9 @@ export function useChat(userId, projectId) {
 
   const switchConversation = useCallback((chatId, title) => {
     setActiveChatId(chatId);
+    storeActiveChatId(projectId, chatId);
     setChatTitle(title || '');
-  }, []);
+  }, [projectId]);
 
   return {
     activeChatId,

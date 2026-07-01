@@ -26,10 +26,13 @@ async function fetchArxivData(identifier) {
  * @param {number} limit - Max results
  * @returns {Promise<Article[]>}
  */
-export async function searchArticles(query, limit = 10) {
-    const res = await apiFetch(`/api/doi/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+export async function searchArticles(query, limit = 10, offset = 0) {
+    const res = await apiFetch(`/api/doi/search?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`);
     const data = await res.json();
-    return (data.results || []).map(item => parseArticle(item));
+    return {
+        results: (data.results || []).map(item => parseArticle(item)),
+        total: data.total || 0
+    };
 }
 
 /**

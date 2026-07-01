@@ -20,6 +20,56 @@ _doi_service = DoiLookup()
 
 
 @router.get(
+    "/search",
+    response_model=DoiSearchResponse,
+    summary="Search papers in ArXiv by keyword",
+)
+async def search_arxiv(
+    q: str,
+    limit: int = 10,
+    offset: int = 0,
+    user: dict[str, Any] = Depends(get_current_user),
+) -> DoiSearchResponse:
+    """
+    Search ArXiv for papers based on a keyword query.
+    """
+    try:
+        results = await _arxiv_service.search_async(q, max_results=limit, offset=offset)
+        
+        # Heuristic total: if results length is exactly limit, we assume more are available.
+        # This prevents slow double calls to ArXiv API or parsing complex HTML/XML directly.
+        if len(results) == limit:
+            total = offset + limit + 10
+        else:
+            total = offset + len(results)
+
+        # Convert raw service results to Pydantic models
+        models = [
+            DoiMetadataResponse(
+                doi=r.get("doi"),
+                title=r.get("title"),
+                authors=r.get("authors", []),
+                publication_year=r.get("publication_year"),
+                venue=r.get("venue"),
+                url=r.get("url"),
+                pdf_url=r.get("pdf_url"),
+                abstract=r.get("abstract"),
+                storage_path=None,
+                document_url=r.get("pdf_url"),
+            )
+            for r in results
+        ]
+        
+        return DoiSearchResponse(query=q, results=models, total=total)
+    except Exception as exc:
+        logger.error("[doi_router] Search failed for q=%s: %s", q, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="ArXiv search failed",
+        )
+
+
+@router.get(
     "/{doi:path}",
     response_model=DoiMetadataResponse,
     summary="Fetch Metadata from ArXiv/CrossRef",
@@ -92,46 +142,4 @@ async def get_doi_metadata(
         storage_path=None,
         document_url=result.get("pdf_url"),
     )
-
-
-@router.get(
-    "/search",
-    response_model=DoiSearchResponse,
-    summary="Search papers in ArXiv by keyword",
-)
-async def search_arxiv(
-    q: str,
-    limit: int = 10,
-    user: dict[str, Any] = Depends(get_current_user),
-) -> DoiSearchResponse:
-    """
-    Search ArXiv for papers based on a keyword query.
-    """
-    try:
-        results = await _arxiv_service.search_async(q, max_results=limit)
-        
-        # Convert raw service results to Pydantic models
-        models = [
-            DoiMetadataResponse(
-                doi=r.get("doi"),
-                title=r.get("title"),
-                authors=r.get("authors", []),
-                publication_year=r.get("publication_year"),
-                venue=r.get("venue"),
-                url=r.get("url"),
-                pdf_url=r.get("pdf_url"),
-                abstract=r.get("abstract"),
-                storage_path=None,
-                document_url=r.get("pdf_url"),
-            )
-            for r in results
-        ]
-        
-        return DoiSearchResponse(query=q, results=models, total=len(models))
-    except Exception as exc:
-        logger.error("[doi_router] Search failed for q=%s: %s", q, exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="ArXiv search failed",
-        )
 

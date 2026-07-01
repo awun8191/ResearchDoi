@@ -13,6 +13,9 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [currentQuery, setCurrentQuery] = useState('');
 
   useEffect(() => {
     if (!location.state?.preloadedArticle) return;
@@ -23,19 +26,24 @@ export default function Home() {
     navigate(location.pathname, { replace: true, state: null });
   }, [location.pathname, location.state, navigate]);
 
-  const handleSearch = async (query, mode = 'auto') => {
+  const handleSearch = async (query, mode = 'auto', page = 1) => {
     setError(null);
     setArticle(null);
-    setSearchResults([]);
+    if (page === 1) {
+      setSearchResults([]);
+      setTotalResults(0);
+    }
+    setCurrentQuery(query);
+    setCurrentPage(page);
 
     const looksLikeId = (val) => {
       const clean = val.toLowerCase().trim();
-      // DOI: starts with 10.
-      if (clean.startsWith('10.')) return true;
+      // DOI: starts with 10. or has doi: prefix
+      if (clean.startsWith('10.') || clean.includes('doi:')) return true;
       // ArXiv: digits.digits or arxiv:
       if (/^(\d{4}\.\d{4,5}(v\d+)?|arxiv:[a-z.-]+\/\d+)/.test(clean)) return true;
-      // No spaces usually indicates an ID
-      if (!clean.includes(' ')) return true;
+      // Plain ArXiv IDs without prefix (e.g. 1706.03762)
+      if (/^\d{4}\.\d{4,5}(v\d+)?$/.test(clean)) return true;
       return false;
     };
 
@@ -50,8 +58,11 @@ export default function Home() {
         const data = await fetchArticle(query);
         setArticle(data);
       } else {
-        const results = await searchArticles(query);
+        const limit = 10;
+        const offset = (page - 1) * limit;
+        const { results, total } = await searchArticles(query, limit, offset);
         setSearchResults(results);
+        setTotalResults(total);
         if (results.length === 0) {
           setError('No results found for your query.');
         }
@@ -65,7 +76,6 @@ export default function Home() {
 
   const selectArticle = async (selectedArticle) => {
     setArticle(selectedArticle);
-    setSearchResults([]);
     // Optionally fetch more details if the search result was a summary
     if (!selectedArticle.abstract) {
       try {
@@ -81,10 +91,10 @@ export default function Home() {
   };
 
   return (
-    <div className={`home-content ${article ? 'split-view' : ''}`}>
+    <div className={`home-content ${(article || searchResults.length > 0) ? 'split-view' : ''}`}>
       <div className="layout-wrapper">
         <div className="left-pane">
-          <div className={`hero-section ${article ? 'compact' : ''}`}>
+          <div className={`hero-section ${(article || searchResults.length > 0) ? 'compact' : ''}`}>
             <div className="brand-logo slide-up">
               <div className="brand-title">
                 <Logo size={200} useGradient={true} useSchemeColor={true} />
@@ -157,8 +167,8 @@ export default function Home() {
             ) : searchResults.length > 0 ? (
               <div className="search-results-list slide-up">
                 <div className="results-header">
-                  <span className="results-count">{searchResults.length} PAPERS FOUND</span>
-                  <button className="clear-results" onClick={() => setSearchResults([])}>CLEAR</button>
+                  <span className="results-count">{totalResults > 10 ? 'MULTIPLE PAPERS FOUND' : `${searchResults.length} PAPERS FOUND`}</span>
+                  <button className="clear-results" onClick={() => { setSearchResults([]); setTotalResults(0); setCurrentPage(1); setCurrentQuery(''); }}>CLEAR</button>
                 </div>
                 {searchResults.map((res, idx) => (
                   <div 
@@ -176,6 +186,31 @@ export default function Home() {
                     <div className="res-authors">{res.authors.map(a => `${a.given} ${a.family}`).join(', ')}</div>
                   </div>
                 ))}
+
+                {/* Pagination Controls */}
+                <div className="search-results-footer">
+                  <div className="page-stats">
+                    Page {currentPage} <span className="stat-divider">|</span> Showing {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalResults)}
+                  </div>
+                  <div className="pagination-controls">
+                    <button 
+                      className="page-btn" 
+                      disabled={currentPage === 1 || loading} 
+                      onClick={() => handleSearch(currentQuery, 'auto', currentPage - 1)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                      <span>Previous</span>
+                    </button>
+                    <button 
+                      className="page-btn primary" 
+                      disabled={currentPage * 10 >= totalResults || loading} 
+                      onClick={() => handleSearch(currentQuery, 'auto', currentPage + 1)}
+                    >
+                      <span>Next</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="empty-results-lab">
@@ -212,14 +247,14 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           padding: 2rem;
-          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: flex 400ms var(--ease-out), background 400ms var(--ease-out), backdrop-filter 400ms var(--ease-out), border-right 400ms var(--ease-out);
           position: relative;
         }
 
         .split-view .left-pane {
           flex: 0 0 45%;
           border-right: 1px solid var(--glass-border);
-          background: rgba(0, 0, 0, 0.2);
+          background: var(--bg-surface);
           backdrop-filter: blur(10px);
         }
 
@@ -228,7 +263,7 @@ export default function Home() {
           opacity: 0;
           visibility: hidden;
           background: transparent;
-          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: flex 400ms var(--ease-out), opacity 400ms var(--ease-out), visibility 400ms var(--ease-out);
           overflow-y: auto;
           display: flex;
           flex-direction: column;
@@ -263,7 +298,10 @@ export default function Home() {
         }
 
         .brand-title {
-          filter: drop-shadow(0 0 20px var(--secondary-glow));
+          font-size: 3rem;
+          font-weight: 700;
+          letter-spacing: -0.04em;
+          color: #ffffff;
         }
 
         .brand-tagline {
@@ -284,10 +322,12 @@ export default function Home() {
 
         .glass-search-container {
           position: relative;
-          padding: 4px;
-          border-radius: var(--radius-lg);
-          background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          padding: 8px;
+          border-radius: var(--radius-xl);
+          background: var(--bg-surface);
+          border: 1px solid var(--glass-border);
+          backdrop-filter: var(--glass-blur);
+          box-shadow: var(--shadow-inner), var(--shadow-md);
         }
 
         .quick-actions {
@@ -357,6 +397,75 @@ export default function Home() {
           gap: 1rem;
         }
 
+        .search-results-footer {
+          padding: 1.25rem 2rem;
+          border-radius: var(--radius-lg);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 1.5rem;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          backdrop-filter: var(--glass-blur);
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
+        }
+
+        .page-stats {
+          font-family: var(--font-mono);
+          font-size: 0.75rem;
+          color: var(--text-dim);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .stat-divider {
+          margin: 0 0.75rem;
+          opacity: 0.3;
+        }
+
+        .pagination-controls {
+          display: flex;
+          gap: 0.75rem;
+        }
+
+        .page-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 1.2rem;
+          background: var(--bg-body);
+          border: 1px solid var(--glass-border);
+          color: var(--text-muted);
+          border-radius: var(--radius-md);
+          font-weight: 700;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          transition: var(--transition-base);
+          cursor: pointer;
+        }
+
+        .page-btn:hover:not(:disabled) {
+          border-color: var(--border-bright);
+          color: var(--text-main);
+        }
+
+        .page-btn.primary {
+          background: var(--secondary);
+          color: white;
+          border: none;
+        }
+
+        .page-btn.primary:hover:not(:disabled) {
+          filter: brightness(1.1);
+          transform: translateY(-1px);
+        }
+
+        .page-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
         .results-header {
           display: flex;
           justify-content: space-between;
@@ -385,18 +494,21 @@ export default function Home() {
 
         .search-result-item {
           padding: 1.5rem;
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          background: var(--bg-card);
+          backdrop-filter: var(--glass-blur);
           cursor: pointer;
-          transition: all 0.3s ease;
-          animation: slide-up 0.5s ease backwards;
+          transition: transform var(--transition-base), background var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+          animation: slide-up 0.5s var(--ease-out) backwards;
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
         }
 
         .search-result-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: var(--secondary);
-          transform: translateX(10px);
+          background: var(--bg-surface);
+          border-color: var(--border-bright);
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-inner), var(--shadow-md), var(--shadow-glow);
         }
 
         .res-meta {

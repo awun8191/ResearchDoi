@@ -67,6 +67,7 @@ class ProjectResponse(BaseModel):
     id: str
     name: str
     instructions: str = ""
+    thesis: dict[str, str] = {}
     sources: list[SourceItem] = []
     # Firestore Timestamps are serialised to ISO-8601 strings at the service layer
     created_at: Optional[str] = None

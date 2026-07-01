@@ -40,7 +40,9 @@ export default function Sidebar() {
           width: var(--sidebar-width);
           height: 100vh;
           background: var(--bg-sidebar);
-          border-right: 1px solid var(--border);
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
+          border-right: 1px solid var(--glass-border);
           position: fixed;
           left: 0;
           top: 0;
@@ -49,6 +51,7 @@ export default function Sidebar() {
           align-items: center;
           padding: 1.5rem 0;
           z-index: 100;
+          box-shadow: var(--shadow-inner);
         }
 
         @media (max-width: 768px) {

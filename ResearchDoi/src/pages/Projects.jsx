@@ -270,8 +270,11 @@ export default function Projects() {
           align-items: center;
           gap: 1rem;
           padding: 0.8rem 1.5rem;
-          border-radius: var(--radius-lg);
-          transition: all 0.3s ease;
+          border-radius: var(--radius-md);
+          background: var(--bg-surface);
+          border: 1px solid var(--border);
+          backdrop-filter: var(--glass-blur);
+          transition: border-color var(--transition-base), box-shadow var(--transition-base);
         }
 
         .lab-search-pill:focus-within {
@@ -311,14 +314,19 @@ export default function Projects() {
           cursor: pointer;
           position: relative;
           overflow: hidden;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          backdrop-filter: var(--glass-blur);
+          border-radius: var(--radius-lg);
+          transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
         }
 
         .lab-project-card:hover {
-          border-color: var(--secondary);
-          transform: translateY(-5px);
-          background: rgba(30, 41, 59, 0.6);
+          border-color: var(--border-bright);
+          transform: translateY(-4px);
+          background: var(--bg-surface);
+          box-shadow: var(--shadow-inner), var(--shadow-md), var(--shadow-glow);
         }
 
         .card-top {
@@ -337,7 +345,8 @@ export default function Projects() {
           align-items: center;
           justify-content: center;
           color: var(--secondary);
-          transition: all 0.3s ease;
+          transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+          box-shadow: var(--shadow-inner);
         }
 
         .lab-project-card:hover .lab-icon-box {
@@ -420,19 +429,7 @@ export default function Projects() {
         }
 
         .lab-accent-glow {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background: var(--secondary);
-          opacity: 0;
-          transition: 0.4s ease;
-          box-shadow: 0 -4px 15px var(--secondary);
-        }
-
-        .lab-project-card:hover .lab-accent-glow {
-          opacity: 1;
+          display: none;
         }
 
         .lab-loading {
@@ -454,12 +451,15 @@ export default function Projects() {
         .lab-empty {
           padding: 5rem 3rem;
           text-align: center;
-          border-radius: var(--radius-xl);
+          border-radius: var(--radius-lg);
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 2rem;
+          background: var(--bg-card);
           border: 1px dashed var(--glass-border);
+          backdrop-filter: var(--glass-blur);
+          box-shadow: var(--shadow-inner);
         }
 
         .lab-empty-icon {
@@ -494,8 +494,12 @@ export default function Projects() {
           align-items: center;
           gap: 1rem;
           cursor: pointer;
-          transition: all 0.4s ease;
-          box-shadow: 0 10px 30px var(--secondary-glow);
+          transition: transform 200ms var(--ease-out), background 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+          box-shadow: var(--shadow-sm), var(--shadow-inner);
+        }
+        
+        .btn-init-large:active {
+          transform: scale(0.97);
         }
 
         .lab-no-results {
@@ -512,16 +516,16 @@ export default function Projects() {
         .modal-content-lab {
           width: 100%;
           max-width: 560px;
-          background: rgba(15, 23, 42, 0.95);
-          backdrop-filter: blur(30px);
+          background: var(--bg-surface);
+          backdrop-filter: var(--glass-blur);
           border: 1px solid var(--glass-border);
-          border-radius: var(--radius-xl);
+          border-radius: var(--radius-lg);
           padding: 2.5rem;
           display: flex;
           flex-direction: column;
           gap: 2.5rem;
-          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+          animation: slideUp 0.4s var(--ease-out);
+          box-shadow: var(--shadow-inner), var(--shadow-lg);
         }
 
         .modal-head {
@@ -583,7 +587,7 @@ export default function Projects() {
           font-family: var(--font-body);
           font-size: 1rem;
           outline: none;
-          transition: all 0.3s ease;
+          transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
         }
 
         .lab-group input:focus, .lab-group textarea:focus {
@@ -610,7 +614,11 @@ export default function Projects() {
           font-size: 0.75rem;
           letter-spacing: 0.1em;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: color 200ms var(--ease-out), border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+        }
+
+        .btn-lab-cancel:active {
+          transform: scale(0.97);
         }
 
         .btn-lab-cancel:hover {
@@ -635,8 +643,12 @@ export default function Projects() {
           justify-content: center;
           gap: 0.75rem;
           cursor: pointer;
-          transition: all 0.4s ease;
-          box-shadow: 0 10px 25px var(--secondary-glow);
+          transition: transform 200ms var(--ease-out), background 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+          box-shadow: 0 4px 12px var(--secondary-glow);
+        }
+
+        .btn-lab-submit:active {
+          transform: scale(0.97);
         }
 
         .btn-lab-submit:hover:not(:disabled) {
