@@ -30,7 +30,7 @@ export async function createSession(/* userId, projectId, chatId */) {
  * @param {function} onChunk - Callback for each chunk of the response (optional, for streaming)
  * @returns {Promise<{reply: string, chatId: string}>} Agent response
  */
-export async function sendMessage(userId, projectId, chatId, message, onChunk) {
+export async function sendMessage(userId, projectId, chatId, message, onChunk, onActivity) {
     try {
         const res = await apiFetch('/api/chat/agent/message', {
             method: 'POST',
@@ -44,8 +44,12 @@ export async function sendMessage(userId, projectId, chatId, message, onChunk) {
         
         const data = await res.json();
         
+        if (onActivity && data.agent_response) {
+            onActivity(normalizeAgentActivity(data.agent_response));
+        }
+
         if (onChunk && data.reply) {
-            onChunk(data.reply);
+            await streamText(data.reply, onChunk);
         }
         
         return {
@@ -95,5 +99,51 @@ export async function saveMessage(userId, projectId, chatId, role, text) {
             message: text,
             role: role,
         }),
+    });
+}
+
+
+function getPartText(part) {
+    if (!part || typeof part !== 'object') return '';
+    if (typeof part.text === 'string') return part.text;
+    if (part.functionCall?.name) return `Calling ${part.functionCall.name}`;
+    if (part.functionResponse?.name) return `Completed ${part.functionResponse.name}`;
+    return '';
+}
+
+function normalizeAgentActivity(agentResponse) {
+    const events = Array.isArray(agentResponse) ? agentResponse : [agentResponse];
+    return events.map((event, index) => {
+        const parts = event?.content?.parts || event?.parts || [];
+        const functionCall = parts.find((part) => part?.functionCall)?.functionCall;
+        const functionResponse = parts.find((part) => part?.functionResponse)?.functionResponse;
+        const text = parts.map(getPartText).filter(Boolean).join(' • ');
+        const type = functionCall ? 'tool_call' : functionResponse ? 'tool_result' : event?.author ? 'agent' : 'event';
+        return {
+            id: event?.id || `${Date.now()}-${index}`,
+            type,
+            actor: event?.author || event?.name || 'agent',
+            label: functionCall?.name || functionResponse?.name || event?.author || 'Agent event',
+            status: functionResponse ? 'completed' : functionCall ? 'running' : 'observed',
+            summary: text || (event?.actions?.stateDelta ? 'State updated' : 'Agent step recorded'),
+        };
+    }).filter((event) => event.summary || event.label);
+}
+
+function streamText(text, onChunk) {
+    const chunkSize = 24;
+    const frameMs = 16;
+    return new Promise((resolve) => {
+        let index = 0;
+        const emit = () => {
+            index = Math.min(index + chunkSize, text.length);
+            onChunk(text.slice(0, index), { replace: true });
+            if (index >= text.length) {
+                resolve();
+                return;
+            }
+            window.setTimeout(emit, frameMs);
+        };
+        emit();
     });
 }

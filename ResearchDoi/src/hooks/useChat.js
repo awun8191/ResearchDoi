@@ -19,6 +19,8 @@ export function useChat(userId, projectId) {
   const [messages, setMessages] = useState([]);
   const [chatTitle, setChatTitle] = useState('');
   const [sending, setSending] = useState(false);
+  const [agentActivity, setAgentActivity] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(false);
 
@@ -26,12 +28,16 @@ export function useChat(userId, projectId) {
     if (!userId || !projectId) return;
     try {
       const sessions = await listChatSessions(userId, projectId);
-      setChatSessions(sessions);
       const wanted = preferredChatId || getStoredActiveChatId(projectId) || activeChatId;
-      if (sessions.length > 0 && !sessions.some((s) => s.chat_id === wanted)) {
+      const hasWanted = sessions.some((s) => s.chat_id === wanted);
+      setChatSessions(hasWanted || !wanted ? sessions : [
+        { chat_id: wanted, title: wanted === 'default' ? 'Default Chat' : 'Untitled Chat', created_at: null, updated_at: null },
+        ...sessions,
+      ]);
+      if (sessions.length > 0 && !hasWanted && !preferredChatId && wanted === 'default') {
         setActiveChatId(sessions[0].chat_id);
         storeActiveChatId(projectId, sessions[0].chat_id);
-      } else if (sessions.some((s) => s.chat_id === wanted)) {
+      } else if (hasWanted) {
         setActiveChatId(wanted);
         storeActiveChatId(projectId, wanted);
       }
@@ -108,7 +114,9 @@ export function useChat(userId, projectId) {
   useEffect(() => {
     if (!userId || !projectId || !activeChatId) return;
     let isMounted = true;
+    setHistoryLoading(true);
     setMessages([]);
+    setAgentActivity([]);
     async function fetchHistory() {
       try {
         const history = await getChatHistory(userId, projectId, activeChatId);
@@ -124,6 +132,8 @@ export function useChat(userId, projectId) {
         }
       } catch (err) {
         console.error("Failed to load chat history:", err);
+      } finally {
+        if (isMounted) setHistoryLoading(false);
       }
     }
     fetchHistory();
@@ -134,7 +144,9 @@ export function useChat(userId, projectId) {
     if (!text.trim() || sending) return;
 
     setSending(true);
+    const currentChatId = activeChatId || 'default';
     const userMsg = { id: Date.now(), role: 'user', text };
+    setAgentActivity([{ id: `dispatch-${Date.now()}`, type: 'agent', actor: 'client', label: 'Dispatch', status: 'running', summary: `Sending to ${currentChatId}` }]);
     setMessages((prev) => [...prev, userMsg]);
 
     const aiPlaceholderId = Date.now() + 1;
@@ -149,10 +161,10 @@ export function useChat(userId, projectId) {
       await agentSendMessage(
         userId,
         projectId || 'default',
-        activeChatId,
+        currentChatId,
         text,
-        (chunk) => {
-          fullResponse += chunk;
+        (chunk, options = {}) => {
+          fullResponse = options.replace ? chunk : fullResponse + chunk;
           setMessages((prev) =>
             prev.map((m) =>
               m.id === aiPlaceholderId
@@ -160,6 +172,9 @@ export function useChat(userId, projectId) {
                 : m
             )
           );
+        },
+        (activity) => {
+          setAgentActivity((prev) => [...prev.filter((item) => item.label !== 'Dispatch'), ...activity]);
         }
       );
 
@@ -174,8 +189,8 @@ export function useChat(userId, projectId) {
         )
       );
       
-      await refreshChatSessions(activeChatId);
-      storeActiveChatId(projectId, activeChatId);
+      await refreshChatSessions(currentChatId);
+      storeActiveChatId(projectId, currentChatId);
       return { reply: fullResponse, title: nextTitle };
     } catch (err) {
       console.error('Chat error:', err);
@@ -212,6 +227,7 @@ export function useChat(userId, projectId) {
     storeActiveChatId(projectId, nextId);
     setChatTitle('');
     setMessages([]);
+    setAgentActivity([]);
   }, [projectId]);
 
   const deleteConversation = useCallback(async (chatId) => {
@@ -251,6 +267,8 @@ export function useChat(userId, projectId) {
     messages,
     chatTitle,
     sending,
+    historyLoading,
+    agentActivity,
     setChatTitle,
     refreshChatSessions,
     sendMessage,
