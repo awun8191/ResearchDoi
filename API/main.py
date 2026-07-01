@@ -18,6 +18,7 @@ from src.routers import storage as storage_router
 from src.routers import projects as projects_router
 from src.routers import history as history_router
 from src.routers import paper_chat as paper_chat_router
+from src.routers import stream as stream_router
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -89,6 +90,7 @@ app.include_router(storage_router.router, prefix="/api/storage", tags=["Storage"
 app.include_router(projects_router.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(history_router.router, prefix="/api/history", tags=["History"])
 app.include_router(paper_chat_router.router, prefix="/api/chat/paper", tags=["Paper Chat"])
+app.include_router(stream_router.router, prefix="/api/stream", tags=["Stream"])
 
 
 @app.get("/health", tags=["Health"])

@@ -15,7 +15,8 @@ npm run dev > ui.log 2>&1 &
 
 echo "Starting Agent..."
 cd ../AGENT
-uv run python src/agent.py > agent.log 2>&1 &
+export PYTHONPATH=$PYTHONPATH:.
+uv run adk web --port 8000 src > agent.log 2>&1 &
 
 echo "All services started! Logs: api.log, ui.log, agent.log"
 echo "API: http://localhost:8080/health"

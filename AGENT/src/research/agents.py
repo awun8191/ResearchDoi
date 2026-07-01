@@ -25,7 +25,7 @@ def create_academic_search_worker() -> LlmAgent:
         model=primary_model,
         instruction="""
         Role: Academic Discovery Agent.
-        Task: Search for the latest research papers and technical documents on the topic: {research_topic}.
+        Task: Search for the latest research papers and technical documents on the topic provided in the input or session state.
         
         Use the `arxiv_search_tool` to find the most relevant academic papers on Arxiv.
         Use the `mcp_exa_web_search_exa` tool to find high-quality PDF documents or academic pages across the web.
@@ -101,7 +101,7 @@ thesis_planner = LlmAgent(
     model=primary_model,
     instruction="""
     You are a Thesis Planning Agent.
-    Your task is to take a research topic: {research_topic} and generate a granular 5-chapter thesis plan.
+    Your task is to take a research topic provided in the input or session state and generate a granular 5-chapter thesis plan.
     
     The plan MUST be a list of sections to be written, in order.
     Each section should be a dictionary with:

@@ -2,6 +2,7 @@ import os
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.models import LlmRequest, LlmResponse
 from google.adk.events import Event
 from google.genai import types
 
@@ -16,60 +17,79 @@ class MockLiteLlm(LiteLlm):
     It simulates tool calls for TransferToAgentTool and standard text responses.
     """
     async def generate_content_async(
-        self,
-        messages: List[Dict[str, str]],
-        tools: Optional[List[Any]] = None,
-        **kwargs
-    ) -> AsyncGenerator[Any, None]:
+        self, llm_request: LlmRequest, stream: bool = False
+    ) -> AsyncGenerator[LlmResponse, None]:
         # Simulate a small delay for realism
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
         
-        # Simple Mock Tool Call Class for Transfer
-        class MockToolCall:
-            def __init__(self, name, arguments):
-                self.id = "call_mock_123"
-                self.type = "function"
-                self.function = type('obj', (object,), {'name': name, 'arguments': arguments})()
-
-        class MockChoice:
-            def __init__(self, content="", tool_calls=None):
-                self.message = type('obj', (object,), {
-                    'content': content, 
-                    'tool_calls': tool_calls,
-                    'role': 'model'
-                })()
-                self.finish_reason = "STOP"
-
-        class MockResponse:
-            def __init__(self, choices):
-                self.choices = choices
-                self.partial = False
-                # Mock an Enum-like object for finish_reason
-                self.finish_reason = type('obj', (object,), {'value': 'STOP'})()
-                self.content = choices[0].message.content if choices else ""
-                self.usage_metadata = type('obj', (object,), {
-                    'prompt_token_count': 10,
-                    'candidates_token_count': 20,
-                    'total_token_count': 30
-                })()
+        # If we have too many turns in history, exit any loops
+        if len(llm_request.contents) > 10:
+             if llm_request.tools_dict and "exit_loop" in llm_request.tools_dict:
+                 part = types.Part(function_call=types.FunctionCall(name="exit_loop", args={}))
+                 yield LlmResponse(content=types.Content(role="model", parts=[part]), finish_reason="STOP", partial=False)
+                 return
+             else:
+                 yield LlmResponse(content=types.Content(role="model", parts=[types.Part(text="[MOCK EXIT] Terminating long conversation.")]), finish_reason="STOP", partial=False)
+                 return
 
         # Determine if we should perform a TransferToAgentTool call
-        if tools:
-            transfer_tool = next((t for t in tools if hasattr(t, 'name') and t.name.startswith("transfer_to_")), None)
-            if transfer_tool:
-                yield MockResponse([MockChoice(tool_calls=[MockToolCall(transfer_tool.name, '{"thought": "Mocking handoff to sub-agent for research."}')])])
+        if llm_request.tools_dict:
+            # Handle TransferToAgentTool
+            transfer_tool_name = next((name for name in llm_request.tools_dict.keys() if "transfer_to_" in name), None)
+            if transfer_tool_name:
+                # Only transfer if it's the first turn or we haven't transferred yet
+                if len(llm_request.contents) < 5:
+                    target = "autonomous_deep_research"
+                    if "url" in str(llm_request.contents).lower():
+                        target = "url_analyst"
+                    
+                    part = types.Part(
+                        function_call=types.FunctionCall(
+                            name=transfer_tool_name, 
+                            args={"agent_name": target}
+                        )
+                    )
+                    yield LlmResponse(
+                        content=types.Content(role="model", parts=[part]),
+                        finish_reason="STOP",
+                        partial=False
+                    )
+                    return
+
+            # Handle other tools like arxiv_search_tool, etc.
+            # But only if we haven't been looping too much
+            tool_name = list(llm_request.tools_dict.keys())[0]
+            if tool_name != "exit_loop":
+                part = types.Part(
+                    function_call=types.FunctionCall(
+                        name=tool_name,
+                        args={"query": "quantum computing"}
+                    )
+                )
+                yield LlmResponse(
+                    content=types.Content(role="model", parts=[part]),
+                    finish_reason="STOP",
+                    partial=False
+                )
                 return
 
         # Default text response
-        yield MockResponse([MockChoice(content="[MOCK RESPONSE] Gemma-4-31b-it: This is a simulated response to verify the ADK orchestration logic.")])
+        yield LlmResponse(
+            content=types.Content(
+                role="model", 
+                parts=[types.Part(text="[MOCK RESPONSE] This is a simulated response to verify the ADK orchestration logic.")]
+            ),
+            finish_reason="STOP",
+            partial=False
+        )
 
 # Initialize the model
 if MOCK_LLM:
     primary_model = MockLiteLlm(model="openrouter/google/gemma-4-31b-it:free")
     writing_model = MockLiteLlm(model="openrouter/google/gemma-4-31b-it:free")
 else:
-    primary_model = LiteLlm(model="openrouter/minimax/minimax-m2.5:free")
-    writing_model = LiteLlm(model="openrouter/minimax/minimax-m2.5:free")
+    primary_model = LiteLlm(model="openrouter/cohere/north-mini-code:free")
+    writing_model = LiteLlm(model="openrouter/cohere/north-mini-code:free")
 
 # ── Session State Helpers ────────────────────────────────────────────────────
 

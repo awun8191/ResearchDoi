@@ -2,6 +2,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+from fastapi import status
 from src.models.chat import ChatMessageRequest
 from src.routers import chat as chat_router
 from src.service import gemini
@@ -105,6 +106,100 @@ class TestChatApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resp.title, "My Chat")
         self.assertEqual([m.model_dump() for m in resp.messages], fake_history)
         fake_get_history.assert_awaited_once_with(uid="dev-user", project_id="project-1", chat_id="default")
+
+    def test_extract_agent_reply_ignores_initializer_status(self):
+        data = [
+            {
+                "author": "GlobalInitializer",
+                "content": {
+                    "role": "model",
+                    "parts": [{"text": "Session state initialized."}],
+                },
+            },
+            {
+                "author": "the_Orchestrator",
+                "content": {
+                    "role": "model",
+                    "parts": [{"text": "Hi, I can help with research and writing."}],
+                },
+            },
+        ]
+
+        self.assertEqual(
+            chat_router._extract_agent_reply(data),
+            "Hi, I can help with research and writing.",
+        )
+
+    async def test_agent_message_endpoint_persists_extracted_reply(self):
+        agent_payload = [
+            {
+                "author": "GlobalInitializer",
+                "content": {
+                    "role": "model",
+                    "parts": [{"text": "Session state initialized."}],
+                },
+            },
+            {
+                "author": "the_Orchestrator",
+                "content": {
+                    "role": "model",
+                    "parts": [{"text": "Agent reply"}],
+                },
+            },
+        ]
+
+        class FakeResponse:
+            def __init__(self, status_code, payload=None, text=""):
+                self.status_code = status_code
+                self._payload = payload
+                self.text = text
+
+            def json(self):
+                return self._payload
+
+        class FakeAsyncClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, url):
+                return FakeResponse(status.HTTP_200_OK, {})
+
+            async def post(self, url, json=None):
+                if url.endswith("/run"):
+                    return FakeResponse(status.HTTP_200_OK, agent_payload)
+                return FakeResponse(status.HTTP_201_CREATED, {})
+
+        fake_project = SimpleNamespace(
+            name="Project One",
+            instructions="",
+            thesis={},
+        )
+        fake_record = AsyncMock(return_value="hello")
+
+        with patch("src.routers.chat.project_service.get_project", new=AsyncMock(return_value=fake_project)), patch(
+            "src.routers.chat.httpx.AsyncClient", return_value=FakeAsyncClient()
+        ), patch("src.service.gemini.record_external_turn", new=fake_record):
+            resp = await chat_router.send_agent_message(
+                body=chat_router.AgentMessageRequest(
+                    project_id="project-1",
+                    chat_id="chat-1",
+                    message="hello",
+                ),
+                user={"uid": "dev-user"},
+            )
+
+        self.assertEqual(resp.reply, "Agent reply")
+        self.assertEqual(resp.title, "hello")
+        fake_record.assert_awaited_once_with(
+            uid="dev-user",
+            project_id="project-1",
+            chat_id="chat-1",
+            user_text="hello",
+            model_text="Agent reply",
+        )
 
 
 class TestGeminiPersistence(unittest.TestCase):

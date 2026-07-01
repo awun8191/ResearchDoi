@@ -6,10 +6,10 @@ export default function Profile() {
   const { colorScheme, setColorScheme } = useTheme();
 
   const colorOptions = useMemo(() => ([
-    { id: 'default', name: 'Blue', color: '#0ea5e9' },
-    { id: 'red', name: 'Red', color: '#dc2626' },
-    { id: 'orange', name: 'Orange', color: '#ea580c' },
-    { id: 'brown', name: 'Brown', color: '#a16207' },
+    { id: 'default', name: 'Indigo', color: '#6366f1' },
+    { id: 'red', name: 'Red', color: '#e11d48' },
+    { id: 'orange', name: 'Orange', color: '#f97316' },
+    { id: 'brown', name: 'Brown', color: '#d97706' },
   ]), []);
 
   return (
@@ -61,12 +61,15 @@ export default function Profile() {
 
         .profile-card {
           background: var(--bg-card);
-          border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 1.25rem;
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          padding: 1.5rem;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.5rem;
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
         }
 
         .card-title-row {
@@ -100,11 +103,11 @@ export default function Profile() {
           justify-content: center;
           gap: 0.5rem;
           min-height: 44px;
-          border-radius: 10px;
-          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--glass-border);
           background: var(--bg-input);
           cursor: pointer;
-          transition: border-color 0.2s ease, background 0.2s ease;
+          transition: border-color var(--transition-base), background var(--transition-base);
           padding: 0.5rem;
         }
 
@@ -115,6 +118,7 @@ export default function Profile() {
         .swatch.active {
           border-color: var(--secondary);
           background: var(--secondary-glow);
+          box-shadow: var(--shadow-inner), 0 0 16px var(--secondary-glow);
         }
 
         .swatch-dot {

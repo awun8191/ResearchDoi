@@ -151,6 +151,18 @@ def _build_agent_context(project: ProjectResponse) -> str:
     ]
     if project.instructions:
         context_parts.append(f"Project instructions: {project.instructions}")
+        
+    if project.thesis:
+        context_parts.append("Current Thesis State (Truncated for Context Window):")
+        for section_id, content in project.thesis.items():
+            # Simple summarization/sliding window by truncating long sections
+            words = content.split()
+            if len(words) > 300:
+                truncated = " ".join(words[:300]) + "... [TRUNCATED]"
+            else:
+                truncated = content
+            context_parts.append(f"### Section: {section_id}\n{truncated}")
+
     return f"[System Context: {' '.join(context_parts)}]\n\n"
 
 
@@ -161,6 +173,9 @@ def _extract_text_from_parts(parts: Any) -> str:
     text_chunks: list[str] = []
     for part in parts:
         if not isinstance(part, dict):
+            continue
+        # Skip internal reasoning/thinking blocks
+        if part.get("thought") is True:
             continue
         text = part.get("text")
         if isinstance(text, str) and text:
@@ -173,30 +188,37 @@ def _extract_agent_reply(data: Any) -> str:
     Extract the model's text reply from the ADK agent response.
     Handles multiple ADK response schemas with logging for unmatched formats.
     """
+    def usable_text_from_content(content: Any) -> str:
+        if not isinstance(content, dict):
+            return ""
+        role = content.get("role")
+        if role is not None and role not in {"model", "assistant"}:
+            return ""
+        return _extract_text_from_parts(content.get("parts"))
+
     # Schema 1: Direct content dict format
     if isinstance(data, dict):
-        content = data.get("content")
-        if isinstance(content, dict) and content.get("role") == "model":
-            return _extract_text_from_parts(content.get("parts"))
+        reply_text = usable_text_from_content(data.get("content"))
+        if reply_text:
+            return reply_text
         # Schema 2: Wrapped response { "response": { "content": ... } }
         inner = data.get("response") or data.get("message")
         if isinstance(inner, dict):
-            inner_content = inner.get("content")
-            if isinstance(inner_content, dict) and inner_content.get("role") == "model":
-                return _extract_text_from_parts(inner_content.get("parts"))
+            reply_text = usable_text_from_content(inner.get("content"))
+            if reply_text:
+                return reply_text
         return ""
 
     # Schema 3: List of turn/event objects
     if isinstance(data, list):
-        for item in data:
+        status_texts = {"Session state initialized."}
+        for item in reversed(data):
             if not isinstance(item, dict):
                 continue
             # Try direct content
-            content = item.get("content")
-            if isinstance(content, dict) and content.get("role") == "model":
-                reply_text = _extract_text_from_parts(content.get("parts"))
-                if reply_text:
-                    return reply_text
+            reply_text = usable_text_from_content(item.get("content"))
+            if reply_text and reply_text not in status_texts:
+                return reply_text
 
     logger.warning("[chat_router] No recognized agent response schema in: %s", type(data).__name__)
     return ""
@@ -207,6 +229,11 @@ def _build_upstream_error_detail(prefix: str, response: httpx.Response) -> str:
     if not body_text:
         return prefix
     return f"{prefix}: {body_text[:500]}"
+
+
+def _agent_session_id(project_id: str, chat_id: str) -> str:
+    """Scope ADK sessions by project and chat without leaking path separators."""
+    return f"{project_id}__{chat_id}".replace("/", "_")
 
 
 @router.post(
@@ -226,6 +253,7 @@ async def send_agent_message(
     user_id = user["uid"]
     project_id = body.project_id
     chat_id = body.chat_id
+    agent_session_id = _agent_session_id(project_id, chat_id)
     message = body.message
 
     # Fetch project details for context injection
@@ -241,13 +269,13 @@ async def send_agent_message(
     )
 
     session_url = (
-        f"{settings.agent_base_url}/apps/{AGENT_APP_NAME}/users/{user_id}/sessions/{chat_id}"
+        f"{settings.agent_base_url}/apps/{AGENT_APP_NAME}/users/{user_id}/sessions/{agent_session_id}"
     )
     run_url = f"{settings.agent_base_url}/run"
     payload = {
         "app_name": AGENT_APP_NAME,
         "user_id": user_id,
-        "session_id": chat_id,
+        "session_id": agent_session_id,
         "new_message": {
             "role": "user",
             "parts": [{"text": enriched_message}],
@@ -256,16 +284,26 @@ async def send_agent_message(
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            session_response = await client.post(session_url, json={})
-            if session_response.status_code not in {
-                status.HTTP_200_OK,
-                status.HTTP_201_CREATED,
-                status.HTTP_409_CONFLICT,
-            }:
+            session_response = await client.get(session_url)
+            if session_response.status_code == status.HTTP_404_NOT_FOUND:
+                session_response = await client.post(session_url, json={})
+                if session_response.status_code not in {
+                    status.HTTP_200_OK,
+                    status.HTTP_201_CREATED,
+                    status.HTTP_409_CONFLICT,
+                }:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=_build_upstream_error_detail(
+                            "Agent session initialization failed",
+                            session_response,
+                        ),
+                    )
+            elif session_response.status_code != status.HTTP_200_OK:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=_build_upstream_error_detail(
-                        "Agent session initialization failed",
+                        "Agent session lookup failed",
                         session_response,
                     ),
                 )
@@ -298,10 +336,21 @@ async def send_agent_message(
             detail="Agent service returned an unexpected response shape",
         )
 
+    reply = _extract_agent_reply(data)
+    title = None
+    if reply:
+        title = await chat_service.record_external_turn(
+            uid=user_id,
+            project_id=project_id,
+            chat_id=chat_id,
+            user_text=message,
+            model_text=reply,
+        )
+
     return AgentMessageResponse(
-        reply=_extract_agent_reply(data),
+        reply=reply,
         chat_id=chat_id,
-        title=None,
+        title=title,
         agent_response=data,
     )
 

@@ -104,8 +104,12 @@ export default function SearchInput({ onSearch, loading }) {
           font-weight: 700;
           color: var(--text-dim);
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: color 200ms var(--ease-out), background 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
           letter-spacing: 0.05em;
+        }
+
+        .mode-btn:active {
+          transform: scale(0.97);
         }
 
         .mode-btn:hover {
@@ -123,20 +127,19 @@ export default function SearchInput({ onSearch, loading }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: rgba(0, 0, 0, 0.6);
-          border: 1px solid var(--border);
-          border-radius: 18px;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-xl);
           padding: 0.65rem 0.65rem 0.65rem 1.25rem;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+          transition: border-color var(--transition-base), background var(--transition-base), box-shadow var(--transition-base);
           position: relative;
+          box-shadow: var(--shadow-inner), var(--shadow-sm);
         }
 
         .input-lab:focus-within {
           border-color: var(--secondary);
-          background: rgba(15, 23, 42, 0.6);
-          box-shadow: 0 0 40px var(--secondary-glow);
-          transform: translateY(-2px);
+          background: var(--bg-surface);
+          box-shadow: 0 0 30px var(--secondary-glow), var(--shadow-inner);
         }
 
         .lab-left {
