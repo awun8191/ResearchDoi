@@ -64,6 +64,8 @@ export default function ProjectWorkspace() {
     activeChatId,
     chatSessions,
     messages,
+    historyLoading,
+    agentActivity,
     chatTitle, // eslint-disable-line no-unused-vars
     sending,
     setChatTitle, // eslint-disable-line no-unused-vars
@@ -98,10 +100,10 @@ export default function ProjectWorkspace() {
     return unsubscribe;
   }, [projectId]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom without smooth-scroll jank while the model response is updating.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: sending ? 'auto' : 'smooth', block: 'end' });
-  }, [messages, sending]);
+  }, [messages.length, sending]);
 
   // Handle SSE state for the thesis pane
   const thesisState = useSSE(projectId, project?.thesis || {});
@@ -394,7 +396,7 @@ export default function ProjectWorkspace() {
     return (
       <div className="ws-loading">
         <CircularProgress size={32} sx={{ color: 'var(--secondary)' }} />
-        <p>SYNCHRONIZING WORKSPACE...</p>
+        <p>Opening the reading room...</p>
         <style>{styles}</style>
       </div>
     );
@@ -403,10 +405,10 @@ export default function ProjectWorkspace() {
   if (notFound) {
     return (
       <div className="ws-not-found">
-        <h2>WORKSPACE NOT FOUND</h2>
-        <p>This analytical sector has been terminated or moved.</p>
+        <h2>Workspace not found</h2>
+        <p>This research room may have been moved, renamed, or archived.</p>
         <button className="ws-back-btn" onClick={() => navigate('/projects')}>
-          <ArrowLeft size={16} /> BACK TO REGISTRY
+          <ArrowLeft size={16} /> Back to library
         </button>
         <style>{styles}</style>
       </div>
@@ -432,7 +434,7 @@ export default function ProjectWorkspace() {
       <aside className={`ws-sidebar glass ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="ws-sidebar-header">
           <button className="ws-back-link" onClick={() => navigate('/projects')}>
-            <ArrowLeft size={14} /> <span>Registry</span>
+            <ArrowLeft size={14} /> <span>Library</span>
           </button>
           <div className="ws-project-title-row">
             <div className="folder-icon-wrapper">
@@ -449,11 +451,11 @@ export default function ProjectWorkspace() {
               <Plus size={16} />
             </div>
             <div className="ws-card-text">
-              <span className="ws-card-title">INSTRUCTIONS</span>
+              <span className="ws-card-title">Guidance</span>
               <p className="ws-card-subtitle">
                 {editingInstructions
-                  ? "UPDATING..."
-                  : (project.instructions || "Click to add project parameters.")}
+                  ? "Updating notes..."
+                  : (project.instructions || "Add tone, scope, or thesis constraints.")}
               </p>
             </div>
           </div>
@@ -464,13 +466,13 @@ export default function ProjectWorkspace() {
                 className="instructions-textarea"
                 value={instructionsDraft}
                 onChange={(e) => setInstructionsDraft(e.target.value)}
-                placeholder="DEFINE SECTOR PARAMETERS..."
+                placeholder="Add research goals, preferred structure, citation expectations..."
                 rows={4}
                 autoFocus
               />
               <div className="instructions-actions">
-                <button className="btn-lab-sm" onClick={() => setEditingInstructions(false)}>ABORT</button>
-                <button className="btn-lab-sm primary" onClick={handleSaveInstructions}>APPLY</button>
+                <button className="btn-lab-sm" onClick={() => setEditingInstructions(false)}>Cancel</button>
+                <button className="btn-lab-sm primary" onClick={handleSaveInstructions}>Save</button>
               </div>
             </div>
           )}
@@ -481,8 +483,8 @@ export default function ProjectWorkspace() {
               <Database size={16} />
             </div>
             <div className="ws-card-text">
-              <span className="ws-card-title">SOURCES</span>
-              <p className="ws-card-subtitle">{project.sources?.length || 0} REFERENCES</p>
+              <span className="ws-card-title">Sources</span>
+              <p className="ws-card-subtitle">{project.sources?.length || 0} references indexed</p>
             </div>
           </div>
 
@@ -498,10 +500,10 @@ export default function ProjectWorkspace() {
                   {sourceType === 'file' ? (
                     <div className="file-input-box">
                       <label className="file-label">
-                        <span>SELECT ARCHIVE</span>
+                        <span>Select file</span>
                         <input type="file" style={{ display: 'none' }} onChange={(e) => { setSourceFile(e.target.files[0]); setSourceError(''); }} />
                       </label>
-                      <span className="file-name-hint">{sourceFile ? sourceFile.name : 'NO FILE'}</span>
+                      <span className="file-name-hint">{sourceFile ? sourceFile.name : 'No file selected'}</span>
                     </div>
                   ) : (
                     <input
@@ -557,19 +559,19 @@ export default function ProjectWorkspace() {
 
           <div className="ws-conversations-section">
             <div className="ws-conversations-header">
-              <span>ACTIVE STREAMS</span>
+              <span>Conversations</span>
               <button className="conv-new-btn" onClick={startNewConversation}>
                 <Plus size={14} />
               </button>
             </div>
             <div className="chat-streams">
               {chatSessions.length === 0 ? (
-                <div className="no-streams">NO DATA STREAMS</div>
+                <div className="no-streams">No conversations yet</div>
               ) : (
                 chatSessions.map((session) => (
                   <div key={session.chat_id} className={`stream-row glass ${activeChatId === session.chat_id ? 'active' : ''}`}>
                     <button className="stream-btn" onClick={() => switchConversation(session.chat_id, session.title)}>
-                      <span className="stream-title">{session.title || 'UNTITLED STREAM'}</span>
+                      <span className="stream-title">{session.title || 'Untitled conversation'}</span>
                     </button>
                     <button className="stream-del" onClick={() => handleDeleteConversation(session.chat_id)}>
                       <Trash2 size={12} />
@@ -585,14 +587,20 @@ export default function ProjectWorkspace() {
       {/* Main Chat Area */}
       <main className="ws-main">
         <div className="chat-messages">
-          {messages.length === 0 ? (
+          {historyLoading ? (
             <div className="chat-empty-lab stagger-in">
               <div className="lab-pulse-large"></div>
-              <h2>INITIALIZE ANALYTICAL STREAM</h2>
-              <p>WORKSPACE: {project.name}</p>
+              <h2>Gathering the conversation memory</h2>
+              <p>Session: {activeChatId}</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="chat-empty-lab stagger-in">
+              <div className="lab-pulse-large"></div>
+              <h2>Begin a scholarly conversation</h2>
+              <p>Workspace: {project.name}</p>
               <div className="chat-suggestions">
-                <button className="lab-suggest-chip glass" onClick={() => handleSend(null, 'Analyze indexed sources')}>ANALYZE INDEXED SOURCES</button>
-                <button className="lab-suggest-chip glass" onClick={() => handleSend(null, 'Identify core themes')}>IDENTIFY CORE THEMES</button>
+                <button className="lab-suggest-chip glass" onClick={() => handleSend(null, 'Analyze indexed sources')}>Analyze indexed sources</button>
+                <button className="lab-suggest-chip glass" onClick={() => handleSend(null, 'Identify core themes')}>Identify core themes</button>
               </div>
             </div>
           ) : (
@@ -604,17 +612,15 @@ export default function ProjectWorkspace() {
                   </div>
                   <div className="msg-content">
                     <header className="msg-header">
-                      <span className="msg-sender">{msg.role === 'user' ? 'SCIENTIST' : 'RAST AI'}</span>
+                      <span className="msg-sender">{msg.role === 'user' ? 'You' : 'Research agent'}</span>
                       <div className="msg-line"></div>
                     </header>
                     <div className="msg-text-box">
-                      {msg.loading ? (
-                        <div className="lab-loader-dots"><span></span><span></span><span></span></div>
-                      ) : (
-                        <div className="msg-rendered">
-                          {msg.role === 'user' ? <p>{msg.text}</p> : renderMessageText(msg.text)}
-                        </div>
-                      )}
+                      <div className="msg-rendered">
+                        {msg.role === 'user' ? <p>{msg.text}</p> : renderMessageText(msg.text)}
+                        {msg.loading && !msg.text ? <div className="lab-loader-dots"><span></span><span></span><span></span></div> : null}
+                        {msg.loading && msg.text ? <span className="stream-cursor" aria-hidden="true" /> : null}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -630,7 +636,7 @@ export default function ProjectWorkspace() {
             <textarea
               ref={inputRef}
               className="lab-textarea-main"
-              placeholder="INITIALIZE QUERY..."
+              placeholder="Ask about your sources, thesis, or next section..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -644,8 +650,38 @@ export default function ProjectWorkspace() {
               </button>
             </div>
           </form>
+          {sending ? (
+            <div className="agent-computing-note">
+              <span className="thinking-orb" />
+              <span>The agent is reading context, choosing tools, and preparing a response.</span>
+            </div>
+          ) : null}
         </div>
       </main>
+
+      <aside className="agent-observability glass">
+        <header className="obs-header">
+          <span>Agent trace</span>
+          <span className={sending ? 'obs-live active' : 'obs-live'}>{sending ? 'LIVE' : 'IDLE'}</span>
+        </header>
+        <div className="obs-session">Session <strong>{activeChatId}</strong></div>
+        <div className="obs-list">
+          {agentActivity.length === 0 ? (
+            <div className="obs-empty">Tool calls, sub-agent transfers, and agent events will appear here after each run.</div>
+          ) : (
+            agentActivity.map((item) => (
+              <div key={item.id} className={`obs-item ${item.type}`}>
+                <div className="obs-dot"></div>
+                <div>
+                  <div className="obs-title">{item.label}</div>
+                  <div className="obs-meta">{item.actor} · {item.status}</div>
+                  <div className="obs-summary">{item.summary}</div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
 
       {/* Dual Pane (Editor) */}
       <DualPane thesisState={thesisState} />
@@ -1420,6 +1456,108 @@ const styles = `
     cursor: not-allowed;
   }
 
+
+  .agent-observability {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--glass-border);
+    background: rgba(8, 10, 14, 0.78);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.85rem;
+    overflow: hidden;
+  }
+
+  .obs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-main);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+  }
+
+  .obs-live {
+    color: var(--text-dim);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    padding: 0.18rem 0.45rem;
+    font-size: 0.58rem;
+  }
+
+  .obs-live.active {
+    color: var(--secondary);
+    border-color: rgba(0, 245, 212, 0.45);
+  }
+
+  .obs-session,
+  .obs-empty,
+  .obs-meta,
+  .obs-summary {
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    line-height: 1.45;
+  }
+
+  .obs-session strong {
+    color: var(--secondary);
+    word-break: break-all;
+  }
+
+  .obs-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.25rem;
+  }
+
+  .obs-item {
+    display: grid;
+    grid-template-columns: 10px 1fr;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .obs-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--secondary);
+    margin-top: 0.25rem;
+    box-shadow: 0 0 14px rgba(0, 245, 212, 0.5);
+  }
+
+  .obs-title {
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+  }
+
+  .obs-summary {
+    margin-top: 0.35rem;
+    word-break: break-word;
+  }
+
+  .stream-cursor {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    margin-left: 0.2rem;
+    border-radius: 2px;
+    background: var(--secondary);
+    vertical-align: text-bottom;
+    opacity: 0.85;
+  }
+
   /* Responsive fixes */
   .ws-mobile-toggle-btn {
     display: none;
@@ -1429,6 +1567,7 @@ const styles = `
     .ws-container {
       position: relative;
     }
+    .agent-observability { display: none; }
     .ws-sidebar {
       position: absolute;
       left: 0;
@@ -1484,4 +1623,423 @@ const styles = `
   .chat-code-block { font-family: var(--font-mono); font-size: 0.85rem; background: #000; border: 1px solid var(--glass-border); border-radius: 8px; padding: 1rem; margin: 0.75rem 0; overflow-x: auto; color: var(--text-main); }
   .chat-code-block code { font-family: inherit; }
   .citation-badge { display: inline-block; background: rgba(99, 102, 241, 0.15); color: var(--accent); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 4px; padding: 0 4px; margin: 0 2px; font-size: 0.75em; font-family: var(--font-mono); cursor: help; }
+
+  /* Bubbly academia workspace refresh */
+  .ws-container {
+    --ws-ink: #f8f3ff;
+    --ws-cream: #f5ecff;
+    --ws-muted: #cbbdde;
+    --ws-faint: #9b8bad;
+    --ws-plum: #8b5cf6;
+    --ws-lavender: #c4b5fd;
+    --ws-mint: #8ee8d8;
+    --ws-rose: #f0abfc;
+    background:
+      radial-gradient(circle at 20% 8%, rgba(196, 181, 253, 0.16), transparent 32rem),
+      radial-gradient(circle at 76% 18%, rgba(142, 232, 216, 0.12), transparent 28rem),
+      linear-gradient(135deg, #110b17 0%, #08070b 48%, #14101d 100%);
+    color: var(--ws-ink);
+    font-family: var(--font-body);
+  }
+
+  .ws-container h1,
+  .ws-container h2,
+  .ws-container h3,
+  .ws-container h4,
+  .ws-container button,
+  .ws-container textarea,
+  .ws-container input {
+    letter-spacing: -0.01em;
+  }
+
+  .ws-sidebar,
+  .agent-observability {
+    background: rgba(28, 21, 38, 0.64);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .ws-sidebar { width: 336px; }
+
+  .ws-sidebar-header {
+    padding: 1.4rem;
+    border-bottom-color: rgba(255,255,255,0.08);
+  }
+
+  .ws-back-link,
+  .ws-card-title,
+  .ws-conversations-header,
+  .msg-sender,
+  .obs-header,
+  .obs-live,
+  .obs-session,
+  .obs-empty,
+  .obs-meta,
+  .obs-summary,
+  .btn-lab-sm,
+  .type-opt,
+  .lab-suggest-chip,
+  .file-label,
+  .source-meta {
+    font-family: var(--font-heading);
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+
+  .ws-back-link,
+  .ws-card-title,
+  .ws-conversations-header,
+  .msg-sender,
+  .obs-header {
+    color: var(--ws-cream);
+  }
+
+  .ws-project-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-wrap: balance;
+    color: var(--ws-ink);
+  }
+
+  .folder-icon-wrapper,
+  .ws-card-icon,
+  .msg-avatar,
+  .obs-dot {
+    border-radius: 999px;
+  }
+
+  .ws-card-btn,
+  .sources-expanded,
+  .instructions-edit,
+  .source-item,
+  .stream-row,
+  .msg-text-box,
+  .lab-input-form,
+  .obs-item,
+  .chat-code-block {
+    border-radius: 22px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.035));
+    border-color: rgba(255,255,255,0.11);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .ws-card-btn {
+    padding: 1rem;
+    align-items: flex-start;
+  }
+
+  .ws-card-btn:hover,
+  .stream-row:hover,
+  .source-item:hover,
+  .obs-item:hover {
+    background: linear-gradient(145deg, rgba(255,255,255,0.13), rgba(255,255,255,0.055));
+    border-color: rgba(196, 181, 253, 0.28);
+  }
+
+  .ws-card-btn.active,
+  .stream-row.active {
+    background: linear-gradient(145deg, rgba(139, 92, 246, 0.22), rgba(142, 232, 216, 0.07));
+    border-color: rgba(196, 181, 253, 0.34);
+  }
+
+  .ws-card-icon,
+  .folder-icon-wrapper,
+  .msg-avatar {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--ws-lavender);
+  }
+
+  .ws-card-subtitle,
+  .stream-title,
+  .source-title,
+  .chat-p,
+  .chat-bullet,
+  .chat-numbered,
+  .obs-summary,
+  .instructions-textarea,
+  .lab-source-input,
+  .lab-textarea-main {
+    color: var(--ws-cream);
+  }
+
+  .source-meta,
+  .obs-meta,
+  .chat-empty-lab p,
+  .file-name-hint,
+  .sources-empty-state span {
+    color: var(--ws-muted);
+  }
+
+  .ws-main {
+    background: rgba(15, 12, 21, 0.42);
+    border-color: rgba(255,255,255,0.08);
+    position: relative;
+  }
+
+  .ws-main::before {
+    content: '';
+    position: absolute;
+    inset: 1rem;
+    pointer-events: none;
+    border-radius: 34px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent 34%);
+  }
+
+  .chat-messages,
+  .chat-input-zone { position: relative; z-index: 1; }
+
+  .chat-messages-inner { max-width: 820px; gap: 1.5rem; }
+
+  .chat-empty-lab {
+    max-width: 560px;
+    margin: 0 auto;
+    color: var(--ws-ink);
+  }
+
+  .chat-empty-lab h2 {
+    font-family: var(--font-heading);
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+    color: var(--ws-ink);
+    text-wrap: balance;
+  }
+
+  .lab-pulse-large {
+    width: 4.2rem;
+    height: 4.2rem;
+    background:
+      radial-gradient(circle at 35% 30%, #ffffff 0 10%, var(--ws-mint) 11% 28%, var(--ws-lavender) 29% 62%, rgba(139, 92, 246, 0.4) 63% 100%);
+    box-shadow: 0 0 36px rgba(196, 181, 253, 0.28);
+    animation: scholarly-breathe 1.8s ease-in-out infinite;
+  }
+
+  @keyframes scholarly-breathe {
+    0%, 100% { transform: scale(0.96); opacity: 0.82; }
+    50% { transform: scale(1.04); opacity: 1; }
+  }
+
+  .lab-suggest-chip,
+  .btn-lab-sm,
+  .type-opt,
+  .lab-send-trigger,
+  .lab-source-submit,
+  .conv-new-btn,
+  .source-action-btn,
+  .source-del,
+  .stream-del,
+  .lab-input-tool {
+    border-radius: 999px;
+  }
+
+  .lab-suggest-chip {
+    padding: 0.7rem 1rem;
+    font-size: 0.82rem;
+    color: var(--ws-ink);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .lab-msg { align-items: flex-start; gap: 0.9rem; }
+
+  .msg-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .lab-msg.ai .msg-avatar {
+    color: var(--ws-mint);
+    border-color: rgba(142, 232, 216, 0.28);
+    background: rgba(142, 232, 216, 0.08);
+  }
+
+  .msg-header { display: flex; align-items: center; gap: 0.8rem; }
+
+  .msg-sender { font-size: 0.78rem; font-weight: 700; color: var(--ws-muted); }
+
+  .msg-line { background: linear-gradient(90deg, rgba(196,181,253,0.24), transparent); }
+
+  .msg-text-box {
+    padding: 1rem 1.15rem;
+    font-size: 0.98rem;
+    line-height: 1.68;
+  }
+
+  .lab-msg.user .msg-text-box {
+    background: linear-gradient(145deg, rgba(139, 92, 246, 0.22), rgba(255,255,255,0.045));
+    border-color: rgba(196,181,253,0.28);
+  }
+
+  .lab-loader-dots {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    min-height: 1.5rem;
+  }
+
+  .lab-loader-dots span {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 999px;
+    background: var(--ws-lavender);
+    animation: bubble-thinking 0.95s ease-in-out infinite;
+  }
+
+  .lab-loader-dots span:nth-child(2) { animation-delay: 0.12s; background: var(--ws-mint); }
+  .lab-loader-dots span:nth-child(3) { animation-delay: 0.24s; background: var(--ws-rose); }
+
+  @keyframes bubble-thinking {
+    0%, 100% { transform: translateY(0) scale(0.86); opacity: 0.52; }
+    50% { transform: translateY(-0.35rem) scale(1); opacity: 1; }
+  }
+
+  .chat-input-zone {
+    padding: 1rem 2rem 1.6rem;
+    background: linear-gradient(to top, rgba(15,12,21,0.94) 72%, transparent);
+  }
+
+  .lab-input-form {
+    max-width: 820px;
+    padding: 0.62rem 0.72rem;
+    background: rgba(255,255,255,0.09);
+  }
+
+  .lab-input-form:focus-within {
+    border-color: rgba(142, 232, 216, 0.44);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 0 3px rgba(142, 232, 216, 0.1);
+  }
+
+  .lab-textarea-main::placeholder,
+  .lab-source-input::placeholder,
+  .instructions-textarea::placeholder { color: #d8cdea; opacity: 1; }
+
+  .lab-send-trigger,
+  .lab-source-submit,
+  .btn-lab-sm.primary,
+  .type-opt.active {
+    background: linear-gradient(135deg, var(--ws-plum), #a78bfa);
+    color: white;
+  }
+
+  .agent-computing-note {
+    max-width: 820px;
+    margin: 0.65rem auto 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--ws-muted);
+    font-size: 0.82rem;
+  }
+
+  .thinking-orb {
+    width: 0.72rem;
+    height: 0.72rem;
+    border-radius: 999px;
+    background: var(--ws-mint);
+    box-shadow: 0 0 18px rgba(142, 232, 216, 0.5);
+    animation: scholarly-breathe 1.2s ease-in-out infinite;
+  }
+
+  .agent-observability { width: 304px; }
+
+  .obs-header { font-size: 0.86rem; }
+
+  .obs-live {
+    font-size: 0.68rem;
+    color: var(--ws-muted);
+    background: rgba(255,255,255,0.055);
+  }
+
+  .obs-live.active {
+    color: var(--ws-mint);
+    border-color: rgba(142, 232, 216, 0.32);
+  }
+
+  .obs-session strong { color: var(--ws-mint); }
+
+  .obs-item { grid-template-columns: 12px 1fr; }
+
+  .obs-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--ws-mint);
+    box-shadow: 0 0 16px rgba(142, 232, 216, 0.45);
+  }
+
+  .obs-title { color: var(--ws-ink); font-size: 0.86rem; }
+
+  .stream-cursor {
+    width: 0.42rem;
+    height: 1.05rem;
+    border-radius: 999px;
+    background: var(--ws-mint);
+    animation: cursor-breathe 0.9s ease-in-out infinite;
+  }
+
+  @keyframes cursor-breathe {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+
+  .chat-h1, .chat-h2, .chat-h3 {
+    font-family: var(--font-heading);
+    color: var(--ws-ink);
+    text-wrap: balance;
+  }
+
+  .chat-inline-code,
+  .citation-badge {
+    border-radius: 999px;
+    background: rgba(196, 181, 253, 0.14);
+    border-color: rgba(196, 181, 253, 0.26);
+    color: var(--ws-lavender);
+  }
+
+  .chat-code-block { background: rgba(8, 7, 12, 0.72); }
+
+  .ws-loading,
+  .ws-not-found {
+    --ws-ink: #f8f3ff;
+    --ws-muted: #cbbdde;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(196,181,253,0.16), transparent 24rem),
+      #0d0912;
+    color: var(--text-main);
+  }
+
+  .ws-loading p,
+  .ws-not-found p { color: var(--ws-muted); }
+
+  .ws-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.09);
+    color: var(--ws-ink);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  @media (max-width: 1240px) {
+    .agent-observability { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ws-container *,
+    .ws-container *::before,
+    .ws-container *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
 `;
