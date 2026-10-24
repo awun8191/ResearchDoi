@@ -44,11 +44,17 @@ Residual copies on the remote:
 
 - The stale branches `fix-agent-tool-calls-7013000909272883673` and
   `perf-concurrent-section-ingestion-1560778766749434202` still hold the old blob.
+  A force push of `master` does not touch them. Only `master` was rewritten, as
+  the owner requested.
 - The pull request refs `refs/pull/1/head` to `refs/pull/3/head` still hold the old blob.
-  GitHub does not let a push change those refs.
+  GitHub rejects every change to them with the error `refs/pull/* is read-only`.
 
-Delete the stale branches, or close the repository, if you must remove the blob
-from the remote. Rotation stays the primary control.
+An owner can delete a stale branch with this command:
+
+    gh api --method DELETE repos/awun8191/ResearchDoi/git/refs/heads/<branch>
+
+A mirror clone still shows the old blobs while the branches or the pull request
+refs exist. Rotation stays the primary control.
 
 ## Unset key behavior
 
