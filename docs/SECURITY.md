@@ -16,8 +16,9 @@ history of `master` (14 commits). Any person could read the key.
 | The helper that reads the key | `AGENT/src/__init__.py` |
 
 The history rewrite used `git filter-repo --path ResearchDoi/.env --invert-paths`.
-The branch `master` was force pushed. Two blobs are no longer in the history of
-`master`.
+Two blobs left the history of `master` and the history of the two other branches.
+All three branch tips are new commits, because a rewrite changes every commit ID
+after the first changed commit.
 
 ## Rotate the key now (owner step)
 
@@ -42,19 +43,18 @@ Rotation is the only complete fix. Do not rely on the history rewrite alone.
 
 Residual copies on the remote:
 
-- The stale branches `fix-agent-tool-calls-7013000909272883673` and
-  `perf-concurrent-section-ingestion-1560778766749434202` still hold the old blob.
-  A force push of `master` does not touch them. Only `master` was rewritten, as
-  the owner requested.
-- The pull request refs `refs/pull/1/head` to `refs/pull/3/head` still hold the old blob.
+- The pull request refs `refs/pull/1/head` to `refs/pull/3/head` still hold the old blobs.
   GitHub rejects every change to them with the error `refs/pull/* is read-only`.
+  A mirror clone shows the old blobs while those refs exist.
+- The three branches are clean. The branches `fix-agent-tool-calls-7013000909272883673`
+  and `perf-concurrent-section-ingestion-1560778766749434202` had the file removed
+  in the same rewrite. Each branch keeps every commit and every other file. The
+  commit IDs changed.
+- GitHub support is the only route to purge the old blobs from those read-only refs.
+  A deletion of the repository is the other route. Closing a pull request does not
+  remove its ref.
 
-An owner can delete a stale branch with this command:
-
-    gh api --method DELETE repos/awun8191/ResearchDoi/git/refs/heads/<branch>
-
-A mirror clone still shows the old blobs while the branches or the pull request
-refs exist. Rotation stays the primary control.
+Rotation stays the primary control.
 
 ## Unset key behavior
 
